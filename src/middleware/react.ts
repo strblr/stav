@@ -4,7 +4,10 @@ import type { Assign, BaseStore, State } from "../create";
 export interface ReactStore<T> {
   use: {
     (): T;
-    <U>(selector: (state: T) => U, equalFn?: (a: U, b: U) => boolean): U;
+    <U>(
+      selector: (state: T) => U,
+      equalFn?: (slice: U, nextSlice: U) => boolean
+    ): U;
   };
 }
 
@@ -14,11 +17,18 @@ export function react<S extends BaseStore<any>>(
   type T = State<S>;
 
   const reactStore: ReactStore<T> = {
-    use: (selector = (state: T) => state, equalFn = Object.is) => {
-      const previous = useRef<T>(undefined as T);
+    use: (selector = (state: T) => state, equalFn?: typeof Object.is) => {
+      const previous = useRef<any>(uninitialized);
 
-      const memoSelector = (state: T) => {
+      const getSlice = (state: T) => {
         const next = selector(state);
+        if (!equalFn) {
+          return next;
+        }
+        if (previous.current === uninitialized) {
+          previous.current = next;
+          return next;
+        }
         return equalFn(previous.current, next)
           ? previous.current
           : (previous.current = next);
@@ -26,8 +36,8 @@ export function react<S extends BaseStore<any>>(
 
       const slice = useSyncExternalStore(
         store.subscribe,
-        () => memoSelector(store.get()),
-        () => memoSelector(store.getInitial())
+        () => getSlice(store.get()),
+        () => getSlice(store.getInitial())
       );
 
       useDebugValue(slice);
@@ -37,3 +47,7 @@ export function react<S extends BaseStore<any>>(
 
   return { ...store, ...reactStore };
 }
+
+// Utils
+
+const uninitialized = Symbol();

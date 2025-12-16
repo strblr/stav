@@ -1,6 +1,6 @@
 import type { ChangeListener } from "./create";
 
-export function shallow<T extends object>(a: T, b: T): boolean {
+export function shallow<T>(a: T, b: T): boolean {
   if (Object.is(a, b)) {
     return true;
   }
@@ -25,12 +25,12 @@ export function shallow<T extends object>(a: T, b: T): boolean {
 export function slice<T, U>(
   selector: (state: T) => U,
   callback: ChangeListener<U>,
-  equalFn: (a: U, b: U) => boolean = Object.is
+  equalFn: (slice: U, nextSlice: U) => boolean = Object.is
 ): ChangeListener<T> {
   return (state, previousState) => {
     const slice = selector(state);
     const previousSlice = selector(previousState);
-    if (!equalFn(slice, previousSlice)) {
+    if (!equalFn(previousSlice, slice)) {
       callback(slice, previousSlice);
     }
   };

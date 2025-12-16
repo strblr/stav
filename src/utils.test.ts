@@ -141,7 +141,7 @@ describe("slice", () => {
     store.subscribe(slice(state => state.count, callback, customEquality));
     store.set({ count: 1 });
 
-    expect(customEquality).toHaveBeenCalledWith(1, 0);
+    expect(customEquality).toHaveBeenCalledWith(0, 1);
     expect(callback).not.toHaveBeenCalled();
   });
 

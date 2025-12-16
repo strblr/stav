@@ -7,12 +7,12 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
     },
     "./*": {
-      "types": "./dist/middleware/*.d.ts",
-      "default": "./dist/middleware/*.js"
+      "types": "./dist/src/middleware/*.d.ts",
+      "default": "./dist/src/middleware/*.js"
     }
   },
   "keywords": [
@@ -39,6 +39,10 @@
     "prepublishOnly": "bun run build"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.0.11",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
     "@types/bun": "latest",
     "@types/react": "^19.2.7",
     "immer": "^11.0.1",

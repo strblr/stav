@@ -53,6 +53,24 @@ describe("Assign set functionality", () => {
     expect(store.get()).toEqual({ count: 10 });
   });
 
+  test("set with replace=true replaces entire state", () => {
+    const store = assign(create({ value: 0, other: "test" }));
+    store.set({ value: 42 }, true);
+    expect(store.get()).toEqual({ value: 42 } as any);
+  });
+
+  test("set with replace=false merges state (default behavior)", () => {
+    const store = assign(create({ value: 0, other: "test" }));
+    store.set({ value: 42 }, false);
+    expect(store.get()).toEqual({ value: 42, other: "test" });
+  });
+
+  test("set with replace=true and function updater replaces entire state", () => {
+    const store = assign(create({ count: 0, other: "test" }));
+    store.set(() => ({ count: 10 }), true);
+    expect(store.get()).toEqual({ count: 10 } as any);
+  });
+
   test("assign mutations don't affect original state reference", () => {
     const initialState = { items: [1, 2, 3] };
     const store = assign(create(initialState));

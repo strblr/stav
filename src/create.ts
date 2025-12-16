@@ -41,7 +41,7 @@ export const create: Create = <T, H extends object>(
   return { ...store, ...handlers };
 };
 
-// utils
+// Utils
 
 export type ChangeListener<T> = (state: T, previousState: T) => void;
 
