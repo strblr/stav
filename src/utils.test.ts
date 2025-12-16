@@ -138,9 +138,7 @@ describe("slice", () => {
     const customEquality = mock(() => true);
     const store = create({ count: 0 });
 
-    store.subscribe(
-      slice(state => state.count, callback, { isEqual: customEquality })
-    );
+    store.subscribe(slice(state => state.count, callback, customEquality));
     store.set({ count: 1 });
 
     expect(customEquality).toHaveBeenCalledWith(1, 0);
@@ -152,9 +150,7 @@ describe("slice", () => {
     const customEquality = mock(() => false);
     const store = create({ count: 0 });
 
-    store.subscribe(
-      slice(state => state.count, callback, { isEqual: customEquality })
-    );
+    store.subscribe(slice(state => state.count, callback, customEquality));
     store.set({ count: 0 });
 
     expect(customEquality).toHaveBeenCalledWith(0, 0);
@@ -166,7 +162,7 @@ describe("slice", () => {
     const callback = mock();
     const store = create({ user: { name: "John", age: 30 } });
 
-    store.subscribe(slice(state => state.user, callback, { isEqual: shallow }));
+    store.subscribe(slice(state => state.user, callback, shallow));
 
     store.set({ user: { name: "John", age: 30 } });
     expect(callback).not.toHaveBeenCalled();

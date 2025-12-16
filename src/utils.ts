@@ -25,13 +25,12 @@ export function shallow<T extends object>(a: T, b: T): boolean {
 export function slice<T, U>(
   selector: (state: T) => U,
   callback: ChangeListener<U>,
-  options: { isEqual?: (a: U, b: U) => boolean } = {}
+  equalFn: (a: U, b: U) => boolean = Object.is
 ): ChangeListener<T> {
-  const { isEqual = Object.is } = options;
   return (state, previousState) => {
     const slice = selector(state);
     const previousSlice = selector(previousState);
-    if (!isEqual(slice, previousSlice)) {
+    if (!equalFn(slice, previousSlice)) {
       callback(slice, previousSlice);
     }
   };
