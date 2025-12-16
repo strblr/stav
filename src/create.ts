@@ -2,7 +2,6 @@ export interface BaseStore<T> {
   get: () => T;
   getInitial: () => T;
   set: (nextState: T | ((state: T) => T)) => void;
-  reset: () => void;
   subscribe: (listener: ChangeListener<T>) => () => void;
 }
 
@@ -31,7 +30,6 @@ export const create: Create = <T, H extends object>(
       state = nextState;
       listeners.forEach(listener => listener(state, previousState));
     },
-    reset: () => store.set(store.getInitial),
     subscribe: listener => {
       listeners.add(listener);
       return () => {

@@ -30,7 +30,6 @@ describe("Basic functionality", () => {
 
     expect(store.get).toBeFunction();
     expect(store.set).toBeFunction();
-    expect(store.reset).toBeFunction();
     expect(store.subscribe).toBeFunction();
     expect(store.persist).toBeObject();
     expect(store.persist.hydrated).toBeBoolean();
@@ -46,7 +45,7 @@ describe("Basic functionality", () => {
     expect(store.get()).toBe("world");
     store.set(s => s + "!");
     expect(store.get()).toBe("world!");
-    store.reset();
+    store.set(store.getInitial);
     expect(store.get()).toBe("hello");
   });
 

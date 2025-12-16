@@ -14,7 +14,6 @@ describe("Basic functionality", () => {
     expect(store.get).toBeFunction();
     expect(store.set).toBeFunction();
     expect(store.getInitial).toBeFunction();
-    expect(store.reset).toBeFunction();
     expect(store.subscribe).toBeFunction();
   });
 
@@ -215,21 +214,6 @@ describe("Different data types", () => {
 });
 
 describe("Integration with store features", () => {
-  test("reset works with immer mutations", () => {
-    const initialState = { count: 0, items: [1, 2, 3] };
-    const store = immer(create(initialState));
-
-    store.set(state => {
-      state.count = 10;
-      state.items.push(4);
-    });
-
-    expect(store.get()).toEqual({ count: 10, items: [1, 2, 3, 4] });
-
-    store.reset();
-    expect(store.get()).toBe(initialState);
-  });
-
   test("immer set preserves Object.is optimization", () => {
     const listener = mock();
     const sameObject = { value: 42 };
@@ -237,6 +221,8 @@ describe("Integration with store features", () => {
     store.subscribe(listener);
 
     store.set(sameObject);
+    expect(listener).not.toHaveBeenCalled();
+    store.set(() => {});
     expect(listener).not.toHaveBeenCalled();
     store.set({ value: 43 });
     expect(listener).toHaveBeenCalledTimes(1);

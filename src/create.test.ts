@@ -49,26 +49,6 @@ describe("Function updater", () => {
   });
 });
 
-describe("Reset functionality", () => {
-  test("reset restores initial state", () => {
-    const initialState = [1, 2, 3];
-    const store = create(initialState);
-    store.set([4, 5, 6]);
-    expect(store.get()).not.toBe(initialState);
-    store.reset();
-    expect(store.get()).toBe(initialState);
-  });
-
-  test("reset notifies listeners", () => {
-    const listener = mock();
-    const store = create(10);
-    store.set(20);
-    store.subscribe(listener);
-    store.reset();
-    expect(listener).toHaveBeenCalledWith(10, 20);
-  });
-});
-
 describe("Subscription system", () => {
   test("subscribe returns unsubscribe function", () => {
     const store = create(0);
@@ -250,7 +230,7 @@ describe("Edge cases and advanced scenarios", () => {
     store.set(10);
     store.set(20);
     store.set(n => n + 10);
-    store.reset();
+    store.set(store.getInitial);
 
     expect(states).toEqual([10, 0, 20, 10, 30, 20, 0, 30]);
   });
@@ -269,24 +249,6 @@ describe("Edge cases and advanced scenarios", () => {
     expect(store.get()).toBe(3);
     expect(updates).toEqual([1, 1, 2, 2, 3, 3]);
   });
-
-  test("reset works with function updaters and complex state", () => {
-    const initialState = { counter: 0, list: [1, 2, 3] };
-    const store = create(initialState);
-
-    store.set(state => ({
-      ...state,
-      counter: 10,
-      list: [...state.list, 4, 5]
-    }));
-
-    expect(store.get()).toEqual({ counter: 10, list: [1, 2, 3, 4, 5] });
-
-    store.reset();
-    expect(store.get()).toBe(initialState);
-    expect(store.get().counter).toBe(0);
-    expect(store.get().list).toEqual([1, 2, 3]);
-  });
 });
 
 describe("Handlers functionality", () => {
@@ -300,7 +262,6 @@ describe("Handlers functionality", () => {
     expect(store.getValue).toBeFunction();
     expect(store.get).toBeFunction();
     expect(store.set).toBeFunction();
-    expect(store.reset).toBeFunction();
     expect(store.subscribe).toBeFunction();
   });
 
@@ -356,8 +317,8 @@ describe("Handlers functionality", () => {
     const store = create("test", {});
 
     expect(store.get()).toBe("test");
+    expect(store.getInitial).toBeFunction();
     expect(store.set).toBeFunction();
-    expect(store.reset).toBeFunction();
     expect(store.subscribe).toBeFunction();
   });
 });
