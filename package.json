@@ -11,8 +11,8 @@
       "default": "./dist/index.js"
     },
     "./*": {
-      "types": "./dist/*.d.ts",
-      "default": "./dist/*.js"
+      "types": "./dist/middleware/*.d.ts",
+      "default": "./dist/middleware/*.js"
     }
   },
   "keywords": [
@@ -41,14 +41,19 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19.2.7",
+    "immer": "^11.0.1",
     "prettier": "^3.7.4",
-    "react": "19.2.3",
+    "react": "^19.2.3",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "immer": ">=9.0.6",
+    "react": ">=18.0.0"
   },
   "peerDependenciesMeta": {
+    "immer": {
+      "optional": true
+    },
     "react": {
       "optional": true
     }
