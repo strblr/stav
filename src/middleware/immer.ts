@@ -18,7 +18,7 @@ export function immer<S extends BaseStore<any>>(
     set: nextState => {
       const updater =
         typeof nextState === "function"
-          ? (produce(nextState) as (state: T) => T)
+          ? produce(nextState as ImmerRecipe<T>)
           : nextState;
       store.set(updater);
     }
