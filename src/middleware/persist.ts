@@ -19,7 +19,7 @@ export interface PersistOptions<T, P, R> {
   migrate?: (partialized: any, version: number) => P;
   merge?: (partialized: P, state: T) => T;
   onHydrate?: (state: T, previousState: T) => void;
-  onError?: (error: unknown, action: "hydrate" | "set" | "clear") => void;
+  onError?: (error: unknown, during: "hydrate" | "update" | "clear") => void;
 }
 
 export function persist<S extends BaseStore<any>, P = State<S>, R = string>(
@@ -56,17 +56,16 @@ export function persist<S extends BaseStore<any>, P = State<S>, R = string>(
     onError
   } = { ...defaultOptions, ...options };
 
-  const set: S["set"] = nextState => {
-    store.set(nextState);
+  store.subscribe(state => {
     if (!storage) return;
     try {
-      const partialized = partialize(store.get());
+      const partialized = partialize(state);
       const serialized = serialize([partialized, version]);
       storage.setItem(key, serialized);
     } catch (error) {
-      onError?.(error, "set");
+      onError?.(error, "update");
     }
-  };
+  });
 
   const persistStore: PersistStore = {
     persist: {
@@ -106,7 +105,7 @@ export function persist<S extends BaseStore<any>, P = State<S>, R = string>(
     persistStore.persist.hydrate();
   }
 
-  return { ...store, set, ...persistStore };
+  return { ...store, ...persistStore };
 }
 
 // Utils

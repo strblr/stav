@@ -391,7 +391,7 @@ describe("Callbacks", () => {
 
     store.set("new value");
     expect(store.get()).toBe("new value");
-    expect(onError).toHaveBeenCalledWith(expect.any(Error), "set");
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), "update");
   });
 
   test("onError is called on storage errors during hydrate", () => {
@@ -443,7 +443,7 @@ describe("Callbacks", () => {
     });
 
     store.set(circular);
-    expect(onError).toHaveBeenCalledWith(expect.any(Error), "set");
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), "update");
   });
 });
 
