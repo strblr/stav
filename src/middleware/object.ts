@@ -1,16 +1,13 @@
-import type { Assign, Store, State, StoreUpdater } from "../create";
-import { shallow } from "../utils.js";
+import type { Store, State, StoreUpdater } from "../create";
+import { assign, shallow } from "../utils.js";
 
 export interface ObjectStore<T> {
   assign: (...nextStates: StoreUpdater<T, Partial<T>>[]) => void;
 }
 
-export function object<S extends Store<any>>(
-  store: S
-): Assign<S, ObjectStore<State<S>>> {
+export function object<S extends Store<any>>(store: S) {
   type T = State<S>;
-
-  const objectStore: ObjectStore<T> = {
+  return assign<S, ObjectStore<T>>(store, {
     assign: (...nextStates) => {
       const state = store.get();
       let merged = state;
@@ -25,7 +22,5 @@ export function object<S extends Store<any>>(
         store.set(() => merged);
       }
     }
-  };
-
-  return Object.assign(store, objectStore);
+  });
 }

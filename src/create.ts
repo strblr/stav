@@ -1,4 +1,5 @@
 import { getTransactionInternals, type Internals } from "./internals.js";
+import { assign } from "./utils.js";
 
 export interface Store<T> {
   get: () => T;
@@ -9,8 +10,8 @@ export interface Store<T> {
 
 export function create<T, H extends object = {}>(
   initialState: T,
-  handlers?: H
-): Assign<Store<T>, H> {
+  handlers = {} as H
+) {
   const internals: Internals<T> = {
     state: initialState,
     listeners: new Set()
@@ -43,7 +44,7 @@ export function create<T, H extends object = {}>(
     }
   };
 
-  return Object.assign(store, handlers);
+  return assign(store, handlers);
 }
 
 // Utils
@@ -55,7 +56,3 @@ export type StoreListener<T> = (state: T, previousState: T) => void;
 export type State<S extends Store<any>> = ReturnType<S["get"]>;
 
 export type EqualFn<T> = (state: T, nextState: T) => boolean;
-
-export type Assign<T, U> = Pretty<Omit<T, keyof U> & U>;
-
-type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;

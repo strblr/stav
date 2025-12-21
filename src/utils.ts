@@ -39,3 +39,13 @@ export function slice<T, U>(
     }
   };
 }
+
+// assign
+
+export type Assign<T extends object, U> = Pretty<Omit<T, keyof U> & U>;
+
+type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;
+
+export function assign<T extends object, U>(a: T, b: U): Assign<T, U> {
+  return Object.assign(a, b);
+}

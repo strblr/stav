@@ -1,5 +1,6 @@
-import { create, type Assign, type Store, type State } from "../create.js";
+import { create, type Store, type State } from "../create.js";
 import { getTransaction } from "../transaction.js";
+import { assign } from "../utils.js";
 
 export interface PersistStore {
   persist: ReturnType<
@@ -28,7 +29,7 @@ export interface PersistOptions<T, P, R> {
 export function persist<S extends Store<any>, P = State<S>, R = string>(
   store: S,
   options: PersistOptions<State<S>, P, R> = {}
-): Assign<S, PersistStore> {
+) {
   type T = State<S>;
   type Default<O extends keyof PersistOptions<T, P, R>> = NonNullable<
     PersistOptions<T, P, R>[O]
@@ -113,7 +114,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     persist.hydrate();
   }
 
-  return Object.assign(store, persistStore);
+  return assign(store, persistStore);
 }
 
 // Utils
