@@ -28,9 +28,9 @@ export function devtools<S extends Store<any>>(
     ...options
   }: DevtoolsOptions = {}
 ) {
-  const connection = connect(options, enabled);
   let recording = true;
   const { set } = store;
+  const connection = connect(options, enabled);
 
   const passiveSet = (nextState: StoreUpdater<any>) => {
     const saved = recording;

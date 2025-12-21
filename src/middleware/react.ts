@@ -54,9 +54,10 @@ export function useStore<T, U = T>(
 
 export function create<T, H extends object = {}>(
   initialState: T,
-  handlers?: H
+  handlers?: H,
+  equalFn?: EqualFn<T>
 ) {
-  const store = vanilla(initialState, handlers);
+  const store = vanilla(initialState, handlers, equalFn);
   return react(store as any) as Assign<typeof store, ReactStore<T>>;
 }
 
