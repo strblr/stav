@@ -88,7 +88,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
         }
       },
       persist: () => {
-        if (!storage || persist.get().hydrating || getTransaction()) {
+        if (!storage || persist.get().hydrating) {
           return;
         }
         try {
@@ -107,7 +107,9 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
   const { set } = store;
   store.set = nextState => {
     set(nextState);
-    persist.persist();
+    if (!getTransaction()) {
+      persist.persist();
+    }
   };
 
   if (autoHydrate) {
