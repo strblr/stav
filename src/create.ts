@@ -10,7 +10,8 @@ export interface Store<T> {
 
 export function create<T, H extends object = {}>(
   initialState: T,
-  handlers = {} as H
+  handlers = {} as H,
+  equalFn: EqualFn<T> = Object.is
 ) {
   const internals: Internals<T> = {
     state: initialState,
@@ -31,7 +32,7 @@ export function create<T, H extends object = {}>(
         typeof nextState === "function"
           ? (nextState as (state: T) => T)(state)
           : nextState;
-      if (Object.is(nextState, state)) return;
+      if (equalFn(nextState, state)) return;
       internals.state = nextState;
       listeners.forEach(listener => listener(nextState, state));
     },
