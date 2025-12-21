@@ -1,4 +1,5 @@
-import { create, type Store, type State } from "../create.js";
+import type { Store, State } from "../create";
+import { create } from "./object.js";
 import { getTransaction } from "../transaction.js";
 import { assign } from "../utils.js";
 
@@ -21,8 +22,6 @@ export interface PersistOptions<T, P, R> {
   deserialize?: (serialized: R) => Versioned<P>;
   migrate?: (partialized: any, version: number) => P;
   merge?: (partialized: P, state: T) => T;
-  onHydrateStart?: () => void;
-  onHydrate?: () => void;
   onError?: (error: unknown, during: "hydrate" | "persist") => void;
 }
 
@@ -47,10 +46,8 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     deserialize = JSON.parse as Default<"deserialize">,
     migrate,
     merge = (partialized => partialized) as Default<"merge">,
-    onHydrateStart,
-    onHydrate,
-    onError = error => {
-      throw error;
+    onError = (error, during) => {
+      console.error(`[stav/persist] ${during} error:`, error);
     }
   } = options;
 
@@ -65,8 +62,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
           return;
         }
         try {
-          persist.set(state => ({ ...state, hydrating: true }));
-          onHydrateStart?.();
+          persist.assign({ hydrating: true });
           const serialized = storage.getItem(key);
           if (serialized === null) {
             return;
@@ -79,12 +75,11 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
           const state = store.get();
           const nextState = merge(partialized, state);
           store.set(() => nextState);
-          persist.set(state => ({ ...state, hydrated: true }));
-          onHydrate?.();
+          persist.assign({ hydrated: true });
         } catch (error) {
           onError(error, "hydrate");
         } finally {
-          persist.set(state => ({ ...state, hydrating: false }));
+          persist.assign({ hydrating: false });
         }
       },
       persist: () => {
@@ -102,8 +97,6 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   );
 
-  const persistStore: PersistStore = { persist };
-
   const { set } = store;
   store.set = nextState => {
     set(nextState);
@@ -116,7 +109,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     persist.hydrate();
   }
 
-  return assign(store, persistStore);
+  return assign<S, PersistStore>(store, { persist });
 }
 
 // Utils
