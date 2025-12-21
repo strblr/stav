@@ -1,4 +1,6 @@
-import type { ChangeListener } from "./create";
+import type { StoreListener, EqualFn } from "./create";
+
+// shallow
 
 export function shallow<T>(a: T, b: T): boolean {
   if (Object.is(a, b)) {
@@ -14,24 +16,26 @@ export function shallow<T>(a: T, b: T): boolean {
     return false;
   }
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  for (const key of keys) {
-    if (!Object.is(a[key as keyof T], b[key as keyof T])) {
+  for (const key of keys as Set<keyof T>) {
+    if (!Object.is(a[key], b[key])) {
       return false;
     }
   }
   return true;
 }
 
+// slice
+
 export function slice<T, U>(
   selector: (state: T) => U,
-  callback: ChangeListener<U>,
-  equalFn: (slice: U, nextSlice: U) => boolean = Object.is
-): ChangeListener<T> {
+  listener: StoreListener<U>,
+  equalFn: EqualFn<U> = Object.is
+): StoreListener<T> {
   return (state, previousState) => {
     const slice = selector(state);
     const previousSlice = selector(previousState);
     if (!equalFn(previousSlice, slice)) {
-      callback(slice, previousSlice);
+      listener(slice, previousSlice);
     }
   };
 }

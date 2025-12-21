@@ -1,36 +1,41 @@
-export interface BaseStore<T> {
+import { getTransactionInternals, type Internals } from "./internals.js";
+
+export interface Store<T> {
   get: () => T;
   getInitial: () => T;
-  set: (nextState: T | ((state: T) => T)) => void;
-  subscribe: (listener: ChangeListener<T>) => () => void;
+  set: (nextState: StoreUpdater<T>) => void;
+  subscribe: (listener: StoreListener<T>) => () => void;
 }
 
-export interface Create {
-  <T>(initialState: T): Assign<BaseStore<T>, {}>;
-  <T, H extends object>(initialState: T, handlers: H): Assign<BaseStore<T>, H>;
-}
-
-export const create: Create = <T, H extends object>(
+export function create<T, H extends object = {}>(
   initialState: T,
   handlers?: H
-) => {
-  let state = initialState;
-  const listeners = new Set<ChangeListener<T>>();
+): Assign<Store<T>, H> {
+  const internals: Internals<T> = {
+    state: initialState,
+    listeners: new Set()
+  };
 
-  const store: BaseStore<T> = {
-    get: () => state,
+  const getInternals = () => {
+    return getTransactionInternals<T>(store) ?? internals;
+  };
+
+  const store: Store<T> = {
+    get: () => getInternals().state,
     getInitial: () => initialState,
     set: nextState => {
+      const internals = getInternals();
+      const { state, listeners } = internals;
       nextState =
         typeof nextState === "function"
           ? (nextState as (state: T) => T)(state)
           : nextState;
       if (Object.is(nextState, state)) return;
-      const previousState = state;
-      state = nextState;
-      listeners.forEach(listener => listener(state, previousState));
+      internals.state = nextState;
+      listeners.forEach(listener => listener(nextState, state));
     },
     subscribe: listener => {
+      const { listeners } = getInternals();
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
@@ -38,15 +43,18 @@ export const create: Create = <T, H extends object>(
     }
   };
 
-  return { ...store, ...handlers };
-};
+  return Object.assign(store, handlers);
+}
 
 // Utils
 
-export type ChangeListener<T> = (state: T, previousState: T) => void;
+export type StoreUpdater<T, U = T> = T | U | ((state: T) => T | U);
 
-export type State<S extends BaseStore<any>> =
-  S extends BaseStore<infer T> ? T : never;
+export type StoreListener<T> = (state: T, previousState: T) => void;
+
+export type State<S extends Store<any>> = ReturnType<S["get"]>;
+
+export type EqualFn<T> = (state: T, nextState: T) => boolean;
 
 export type Assign<T, U> = Pretty<Omit<T, keyof U> & U>;
 

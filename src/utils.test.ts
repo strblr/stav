@@ -1,6 +1,5 @@
 import { test, expect, mock, describe } from "bun:test";
 import { shallow, slice } from "./utils";
-import { create } from "./create";
 
 describe("shallow", () => {
   test("returns true for same object reference", () => {
@@ -62,6 +61,13 @@ describe("shallow", () => {
     expect(shallow(arr2, arr1)).toBe(false);
   });
 
+  test("returns false for arrays with different lengths", () => {
+    const arr1 = [1, 2, 3];
+    const arr2 = [1, 2, 3, 4];
+    expect(shallow(arr1, arr2)).toBe(false);
+    expect(shallow(arr2, arr1)).toBe(false);
+  });
+
   test("handles nested objects (shallow only)", () => {
     const nested = { value: 1 };
     const obj1 = { nested };
@@ -91,44 +97,57 @@ describe("shallow", () => {
 
 describe("slice", () => {
   test("returns a function", () => {
-    const slicer = slice<any, any>(
-      state => state.count,
+    const slicer = slice(
+      state => state,
       () => {}
     );
-    expect(typeof slicer).toBe("function");
+    expect(slicer).toBeFunction();
   });
 
   test("calls callback when selected slice changes", () => {
     const callback = mock();
-    const store = create({ count: 0, other: "unchanged" });
+    const slicer = slice(
+      (state: { count: number; other: string }) => state.count,
+      callback
+    );
 
-    store.subscribe(slice(state => state.count, callback));
-    store.set({ count: 1, other: "unchanged" });
-
+    slicer({ count: 1, other: "unchanged" }, { count: 0, other: "unchanged" });
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith(1, 0);
   });
 
   test("doesn't call callback when selected slice doesn't change", () => {
     const callback = mock();
-    const store = create({ count: 0, other: "changed" });
+    const slicer = slice(
+      (state: { count: number; other: string }) => state.count,
+      callback
+    );
 
-    store.subscribe(slice(state => state.count, callback));
-    store.set({ count: 0, other: "changed again" });
-
+    slicer(
+      { count: 0, other: "changed again" },
+      { count: 0, other: "changed" }
+    );
     expect(callback).not.toHaveBeenCalled();
   });
 
   test("works with different selectors", () => {
     const callback = mock();
-    const store = create({ user: { name: "John", age: 30 }, other: "data" });
+    const slicer = slice(
+      (state: { user: { name: string; age: number }; other: string }) =>
+        state.user.name,
+      callback
+    );
 
-    store.subscribe(slice(state => state.user.name, callback));
-
-    store.set({ user: { name: "John", age: 30 }, other: "other data" });
+    slicer(
+      { user: { name: "John", age: 30 }, other: "other data" },
+      { user: { name: "John", age: 30 }, other: "data" }
+    );
     expect(callback).not.toHaveBeenCalled();
 
-    store.set({ user: { name: "Jane", age: 30 }, other: "data" });
+    slicer(
+      { user: { name: "Jane", age: 30 }, other: "data" },
+      { user: { name: "John", age: 30 }, other: "data" }
+    );
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith("Jane", "John");
   });
@@ -136,11 +155,13 @@ describe("slice", () => {
   test("uses custom equality function when provided", () => {
     const callback = mock();
     const customEquality = mock(() => true);
-    const store = create({ count: 0 });
+    const slicer = slice(
+      (state: { count: number }) => state.count,
+      callback,
+      customEquality
+    );
 
-    store.subscribe(slice(state => state.count, callback, customEquality));
-    store.set({ count: 1 });
-
+    slicer({ count: 1 }, { count: 0 });
     expect(customEquality).toHaveBeenCalledWith(0, 1);
     expect(callback).not.toHaveBeenCalled();
   });
@@ -148,11 +169,13 @@ describe("slice", () => {
   test("calls callback when custom equality returns false", () => {
     const callback = mock();
     const customEquality = mock(() => false);
-    const store = create({ count: 0 });
+    const slicer = slice(
+      (state: { count: number }) => state.count,
+      callback,
+      customEquality
+    );
 
-    store.subscribe(slice(state => state.count, callback, customEquality));
-    store.set({ count: 0 });
-
+    slicer({ count: 0 }, { count: 0 });
     expect(customEquality).toHaveBeenCalledWith(0, 0);
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith(0, 0);
@@ -160,14 +183,22 @@ describe("slice", () => {
 
   test("works with shallow equality function", () => {
     const callback = mock();
-    const store = create({ user: { name: "John", age: 30 } });
+    const slicer = slice(
+      (state: { user: { name: string; age: number } }) => state.user,
+      callback,
+      shallow
+    );
 
-    store.subscribe(slice(state => state.user, callback, shallow));
-
-    store.set({ user: { name: "John", age: 30 } });
+    slicer(
+      { user: { name: "John", age: 30 } },
+      { user: { name: "John", age: 30 } }
+    );
     expect(callback).not.toHaveBeenCalled();
 
-    store.set({ user: { name: "Jane", age: 30 } });
+    slicer(
+      { user: { name: "Jane", age: 30 } },
+      { user: { name: "John", age: 30 } }
+    );
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith(
       { name: "Jane", age: 30 },
@@ -177,48 +208,29 @@ describe("slice", () => {
 
   test("defaults to Object.is for equality when no custom equality provided", () => {
     const callback = mock();
-    const store = create({ count: NaN });
+    const slicer = slice((state: { count: number }) => state.count, callback);
 
-    store.subscribe(slice(state => state.count, callback));
-    store.set({ count: NaN });
-
+    slicer({ count: NaN }, { count: NaN });
     expect(callback).not.toHaveBeenCalled();
   });
 
   test("works with primitive state", () => {
     const callback = mock();
-    const store = create(0);
+    const slicer = slice((state: number) => state, callback);
 
-    store.subscribe(slice(state => state, callback));
-    store.set(1);
-
+    slicer(1, 0);
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith(1, 0);
   });
 
   test("passes correct previous slice value", () => {
     const callback = mock();
-    const store = create({ value: "first" });
+    const slicer = slice((state: { value: string }) => state.value, callback);
 
-    store.subscribe(slice(state => state.value, callback));
-    store.set({ value: "second" });
-    store.set({ value: "third" });
-
+    slicer({ value: "second" }, { value: "first" });
+    slicer({ value: "third" }, { value: "second" });
     expect(callback).toHaveBeenCalledTimes(2);
     expect(callback).toHaveBeenNthCalledWith(1, "second", "first");
     expect(callback).toHaveBeenNthCalledWith(2, "third", "second");
-  });
-
-  test("unsubscribe works correctly", () => {
-    const callback = mock();
-    const store = create({ count: 0 });
-
-    const unsubscribe = store.subscribe(slice(state => state.count, callback));
-    store.set({ count: 1 });
-    expect(callback).toHaveBeenCalledTimes(1);
-
-    unsubscribe();
-    store.set({ count: 2 });
-    expect(callback).toHaveBeenCalledTimes(1);
   });
 });
