@@ -6,7 +6,7 @@ export interface Internals<T> {
   listeners: Set<StoreListener<T>>;
 }
 
-export function getTransactionInternals<T>(store: Store<any>) {
+export function getTransactionInternals<T>(store: Store<T>) {
   const currentTx = getTransaction();
   if (!currentTx) {
     return null;

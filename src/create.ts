@@ -19,7 +19,7 @@ export function create<T, H extends object = {}>(
   };
 
   const getInternals = () => {
-    return getTransactionInternals<T>(store) ?? internals;
+    return getTransactionInternals(store) ?? internals;
   };
 
   const store: Store<T> = {
@@ -32,7 +32,7 @@ export function create<T, H extends object = {}>(
         typeof nextState === "function"
           ? (nextState as (state: T) => T)(state)
           : nextState;
-      if (equalFn(nextState, state)) return;
+      if (equalFn(state, nextState)) return;
       internals.state = nextState;
       listeners.forEach(listener => listener(nextState, state));
     },

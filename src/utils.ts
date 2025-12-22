@@ -15,8 +15,11 @@ export function shallow<T>(a: T, b: T): boolean {
   ) {
     return false;
   }
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  for (const key of keys as Set<keyof T>) {
+  const keys = Object.keys(a) as (keyof T)[];
+  if (keys.length !== Object.keys(b).length) {
+    return false;
+  }
+  for (const key of keys) {
     if (!Object.is(a[key], b[key])) {
       return false;
     }
