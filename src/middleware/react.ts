@@ -1,11 +1,6 @@
 import { useSyncExternalStore, useDebugValue, useRef } from "react";
-import {
-  create as vanilla,
-  type Store,
-  type EqualFn,
-  type State
-} from "../create.js";
-import { type Assign, assign } from "../utils.js";
+import type { Store, EqualFn, State } from "../create";
+import { assign } from "../utils.js";
 
 export interface ReactStore<T> {
   use: <U = T>(selector?: (state: T) => U, equalFn?: EqualFn<U>) => U;
@@ -48,17 +43,6 @@ export function useStore<T, U = T>(
 
   useDebugValue(slice);
   return slice;
-}
-
-// create
-
-export function create<T, H extends object = {}>(
-  initialState: T,
-  handlers?: H,
-  equalFn?: EqualFn<T>
-) {
-  const store = vanilla(initialState, handlers, equalFn);
-  return react(store as any) as Assign<typeof store, ReactStore<T>>;
 }
 
 // Utils
