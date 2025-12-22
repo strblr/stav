@@ -2,6 +2,7 @@ import type { Store } from "./create";
 import type { Internals } from "./internals";
 
 export interface Transaction {
+  parent: Transaction | null;
   forks: Map<Store<any>, Internals<any>>;
   act: <T>(fn: () => T) => T;
   commit: () => void;
@@ -15,6 +16,7 @@ export function getTransaction() {
 
 export function createTransaction() {
   const tx: Transaction = {
+    parent: currentTx,
     forks: new Map(),
     act: fn => {
       const saved = currentTx;

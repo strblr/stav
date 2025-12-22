@@ -13,6 +13,15 @@ export function getInternals<T>(store: Store<T>, internals: Internals<T>) {
   }
   let fork = currentTx.forks.get(store);
   if (!fork) {
+    let parent = currentTx.parent;
+    while (parent) {
+      const fork = parent.forks.get(store);
+      if (fork) {
+        internals = fork;
+        break;
+      }
+      parent = parent.parent;
+    }
     fork = {
       state: internals.state,
       listeners: new Set()
