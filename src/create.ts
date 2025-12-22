@@ -1,4 +1,4 @@
-import { getTransactionInternals, type Internals } from "./internals.js";
+import { getInternals, type Internals } from "./internals.js";
 import { assign } from "./utils.js";
 
 export interface Store<T> {
@@ -18,26 +18,22 @@ export function create<T, H extends object = {}>(
     listeners: new Set()
   };
 
-  const getInternals = () => {
-    return getTransactionInternals(store) ?? internals;
-  };
-
   const store: Store<T> = {
-    get: () => getInternals().state,
+    get: () => getInternals(store, internals).state,
     getInitial: () => initialState,
     set: nextState => {
-      const internals = getInternals();
-      const { state, listeners } = internals;
+      const current = getInternals(store, internals);
+      const { state, listeners } = current;
       nextState =
         typeof nextState === "function"
           ? (nextState as (state: T) => T)(state)
           : nextState;
       if (equalFn(state, nextState)) return;
-      internals.state = nextState;
+      current.state = nextState;
       listeners.forEach(listener => listener(nextState, state));
     },
     subscribe: listener => {
-      const { listeners } = getInternals();
+      const { listeners } = getInternals(store, internals);
       listeners.add(listener);
       return () => {
         listeners.delete(listener);

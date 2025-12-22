@@ -6,15 +6,15 @@ export interface Internals<T> {
   listeners: Set<StoreListener<T>>;
 }
 
-export function getTransactionInternals<T>(store: Store<T>) {
+export function getInternals<T>(store: Store<T>, internals: Internals<T>) {
   const currentTx = getTransaction();
   if (!currentTx) {
-    return null;
+    return internals;
   }
   let fork = currentTx.forks.get(store);
   if (!fork) {
     fork = {
-      state: store.get(),
+      state: internals.state,
       listeners: new Set()
     };
     currentTx.forks.set(store, fork);

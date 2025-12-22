@@ -5,7 +5,11 @@ import { assign } from "../utils.js";
 export interface HistoryStore<D> {
   history: ReturnType<
     typeof create<
-      { tracking: boolean; past: D[]; future: D[] },
+      {
+        tracking: boolean;
+        past: D[];
+        future: D[];
+      },
       {
         undo: () => void;
         redo: () => void;
@@ -88,6 +92,7 @@ export function history<S extends Store<any>, D = State<S>>(
   );
 
   const { set } = store;
+
   store.set = nextState => {
     const previousState = store.get();
     set(nextState);
