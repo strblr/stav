@@ -23,7 +23,7 @@ export interface HistoryStore<D> {
 
 export interface HistoryOptions<T, D = T> {
   limit?: number;
-  diff?: (state: T, nextState: T) => D | typeof unchanged;
+  diff?: (state: T, targetState: T) => D | typeof unchanged;
   patch?: (state: T, delta: D) => T;
 }
 
@@ -33,7 +33,7 @@ export function history<S extends Store<any>, D = State<S>>(
 ) {
   const {
     limit = Infinity,
-    diff = (_, nextState) => nextState as D,
+    diff = (_, targetState) => targetState as D,
     patch = (_, delta) => delta as State<S>
   } = options;
   const tracking = createScope(true);
@@ -46,31 +46,29 @@ export function history<S extends Store<any>, D = State<S>>(
     },
     {
       undo: () => {
-        const {
-          past: [delta, ...past]
-        } = history.get();
-        if (!delta) return;
+        const { past } = history.get();
+        if (past.length === 0) return;
+        const [delta, ...rest] = past;
         const state = store.get();
         const nextState = patch(state, delta);
         const futureDelta = diff(nextState, state);
         tracking.act(false, () => store.set(nextState));
         history.assign(({ future }) => ({
-          past,
+          past: rest,
           future: futureDelta !== unchanged ? [futureDelta, ...future] : future
         }));
       },
       redo: () => {
-        const {
-          future: [delta, ...future]
-        } = history.get();
-        if (!delta) return;
+        const { future } = history.get();
+        if (future.length === 0) return;
+        const [delta, ...rest] = future;
         const state = store.get();
         const nextState = patch(state, delta);
         const pastDelta = diff(nextState, state);
         tracking.act(false, () => store.set(nextState));
         history.assign(({ past }) => ({
           past: pastDelta !== unchanged ? [pastDelta, ...past] : past,
-          future
+          future: rest
         }));
       },
       clear: () => {

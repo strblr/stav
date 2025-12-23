@@ -47,6 +47,7 @@
     "@types/bun": "latest",
     "@types/react": "^19.2.7",
     "immer": "^11.0.1",
+    "jsondiffpatch": "^0.7.3",
     "prettier": "^3.7.4",
     "react": "^19.2.3",
     "typescript": "^5.9.3"
