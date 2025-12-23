@@ -1,32 +1,30 @@
 import type { Store, StoreListener } from "./create";
-import { getTransaction } from "./transaction.js";
+import { getTransaction, type Transaction } from "./transaction.js";
 
 export interface Internals<T> {
   state: T;
-  listeners: Set<StoreListener<T>>;
+  readonly listeners: Set<StoreListener<T>>;
 }
 
 export function getInternals<T>(store: Store<T>, internals: Internals<T>) {
-  const currentTx = getTransaction();
-  if (!currentTx) {
+  return upsertInternals(getTransaction(), store, internals);
+}
+
+function upsertInternals<T>(
+  tx: Transaction | null,
+  store: Store<T>,
+  internals: Internals<T>
+): Internals<T> {
+  if (!tx) {
     return internals;
   }
-  let fork = currentTx.forks.get(store);
+  let fork = tx.forks.get(store);
   if (!fork) {
-    let parent = currentTx.parent;
-    while (parent) {
-      const fork = parent.forks.get(store);
-      if (fork) {
-        internals = fork;
-        break;
-      }
-      parent = parent.parent;
-    }
     fork = {
-      state: internals.state,
+      state: upsertInternals(tx.parent, store, internals).state,
       listeners: new Set()
     };
-    currentTx.forks.set(store, fork);
+    tx.forks.set(store, fork);
   }
-  return fork as Internals<T>;
+  return fork;
 }

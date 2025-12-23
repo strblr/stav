@@ -2,8 +2,8 @@ import type { Store } from "./create";
 import type { Internals } from "./internals";
 
 export interface Transaction {
-  parent: Transaction | null;
-  forks: Map<Store<any>, Internals<any>>;
+  readonly parent: Transaction | null;
+  readonly forks: Map<Store<any>, Internals<any>>;
   act: <T>(fn: () => T) => T;
   commit: () => void;
 }
@@ -14,19 +14,26 @@ export function getTransaction() {
   return currentTx;
 }
 
-export function createTransaction() {
-  const tx: Transaction = {
-    parent: currentTx,
-    forks: new Map(),
-    act: fn => {
-      const saved = currentTx;
+export function createTransaction(parent = currentTx) {
+  const act = <T>(tx: Transaction | null, fn: () => T) => {
+    const saved = currentTx;
+    try {
       currentTx = tx;
-      const result = fn();
+      return fn();
+    } finally {
       currentTx = saved;
-      return result;
-    },
+    }
+  };
+  const tx: Transaction = {
+    parent,
+    forks: new Map(),
+    act: fn => act(tx, fn),
     commit: () => {
-      tx.forks.forEach((internals, store) => store.set(() => internals.state));
+      act(parent, () => {
+        tx.forks.forEach((internals, store) =>
+          store.set(() => internals.state)
+        );
+      });
     }
   };
   return tx;
