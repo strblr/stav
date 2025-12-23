@@ -1,6 +1,6 @@
 import type { State, Store } from "../create";
 import { create } from "./object.js";
-import { assign } from "../utils.js";
+import { assign, createScope } from "../utils.js";
 
 export interface HistoryStore<D> {
   history: ReturnType<
@@ -31,12 +31,12 @@ export function history<S extends Store<any>, D = State<S>>(
   store: S,
   options: HistoryOptions<State<S>, D> = {}
 ) {
-  type T = State<S>;
   const {
     limit = Infinity,
     diff = (_, nextState) => nextState as D,
-    patch = (_, delta) => delta as T
+    patch = (_, delta) => delta as State<S>
   } = options;
+  const tracking = createScope(true);
 
   const history = create(
     {
@@ -47,34 +47,28 @@ export function history<S extends Store<any>, D = State<S>>(
     {
       undo: () => {
         const {
-          tracking,
           past: [delta, ...past]
         } = history.get();
         if (!delta) return;
         const state = store.get();
         const nextState = patch(state, delta);
         const futureDelta = diff(nextState, state);
-        history.assign({ tracking: false });
-        store.set(() => nextState);
+        tracking.act(false, () => store.set(nextState));
         history.assign(({ future }) => ({
-          tracking,
           past,
           future: futureDelta !== unchanged ? [futureDelta, ...future] : future
         }));
       },
       redo: () => {
         const {
-          tracking,
           future: [delta, ...future]
         } = history.get();
         if (!delta) return;
         const state = store.get();
         const nextState = patch(state, delta);
         const pastDelta = diff(nextState, state);
-        history.assign({ tracking: false });
-        store.set(() => nextState);
+        tracking.act(false, () => store.set(nextState));
         history.assign(({ past }) => ({
-          tracking,
           past: pastDelta !== unchanged ? [pastDelta, ...past] : past,
           future
         }));
@@ -96,7 +90,9 @@ export function history<S extends Store<any>, D = State<S>>(
   store.set = (...args) => {
     const previousState = store.get();
     set(...args);
-    if (!history.get().tracking) return;
+    if (!tracking.get() || !history.get().tracking) {
+      return;
+    }
     const state = store.get();
     const delta = diff(state, previousState);
     if (delta === unchanged) return;

@@ -2,7 +2,7 @@ import "@redux-devtools/extension";
 import type { Config } from "@redux-devtools/extension";
 import type { State, Store, StoreUpdater } from "../create";
 import { getTransaction } from "../transaction.js";
-import { assign } from "../utils.js";
+import { assign, createScope } from "../utils.js";
 
 export interface DevtoolsStore<T> {
   devtools: {
@@ -28,16 +28,9 @@ export function devtools<S extends Store<any>>(
     ...options
   }: DevtoolsOptions = {}
 ) {
-  let recording = true;
-  const { set } = store;
   const connection = connect(options, enabled);
-
-  const passiveSet = (nextState: StoreUpdater<any>) => {
-    const saved = recording;
-    recording = false;
-    store.set(nextState);
-    recording = saved;
-  };
+  const recording = createScope(true);
+  const { set } = store;
 
   connection?.init(store.get());
 
@@ -46,7 +39,9 @@ export function devtools<S extends Store<any>>(
       case "DISPATCH":
         switch (message.payload.type) {
           case "RESET":
-            passiveSet(store.getInitial);
+            recording.act(false, () => {
+              store.set(store.getInitial);
+            });
             connection.init(store.get());
             return;
 
@@ -55,17 +50,21 @@ export function devtools<S extends Store<any>>(
             return;
 
           case "ROLLBACK":
-            passiveSet(() => JSON.parse(message.state));
+            recording.act(false, () => {
+              store.set(() => JSON.parse(message.state));
+            });
             connection.init(store.get());
             return;
 
           case "JUMP_TO_STATE":
           case "JUMP_TO_ACTION":
-            passiveSet(() => JSON.parse(message.state));
+            recording.act(false, () =>
+              store.set(() => JSON.parse(message.state))
+            );
             return;
 
           case "PAUSE_RECORDING":
-            recording = !recording;
+            recording.set(!recording.get());
             return;
         }
     }
@@ -74,13 +73,13 @@ export function devtools<S extends Store<any>>(
   return assign<S, DevtoolsStore<State<S>>>(store, {
     devtools: {
       cleanup: () => {
-        recording = false;
+        recording.set(false);
         connection?.unsubscribe?.();
       }
     },
     set: (nextState, action = defaultActionType, data) => {
       set(nextState);
-      if (!getTransaction() && recording) {
+      if (!getTransaction() && recording.get()) {
         connection?.send({ type: action, ...data }, store.get());
       }
     }

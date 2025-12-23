@@ -1,13 +1,13 @@
 import type { Store, State } from "../create";
 import { create } from "./object.js";
 import { getTransaction } from "../transaction.js";
-import { assign } from "../utils.js";
+import { assign, createScope } from "../utils.js";
 
 export interface PersistStore {
   persist: ReturnType<
     typeof create<
       { hydrating: boolean; hydrated: boolean },
-      { hydrate(): void; persist(): void }
+      { hydrate(): void }
     >
   >;
 }
@@ -51,6 +51,8 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   } = options;
 
+  const hydrating = createScope(false);
+
   const persist = create(
     {
       hydrating: false,
@@ -58,7 +60,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     },
     {
       hydrate: () => {
-        if (!storage || persist.get().hydrating) {
+        if (!storage || hydrating.get()) {
           return;
         }
         try {
@@ -74,34 +76,30 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
           }
           const state = store.get();
           const nextState = merge(partialized, state);
-          store.set(() => nextState);
+          hydrating.act(true, () => store.set(nextState));
           persist.assign({ hydrated: true });
         } catch (error) {
           onError(error, "hydrate");
         } finally {
           persist.assign({ hydrating: false });
         }
-      },
-      persist: () => {
-        if (!storage || persist.get().hydrating) {
-          return;
-        }
-        try {
-          const partialized = partialize(store.get());
-          const serialized = serialize([partialized, version]);
-          storage.setItem(key, serialized);
-        } catch (error) {
-          onError(error, "persist");
-        }
       }
     }
   );
 
   const { set } = store;
+
   store.set = (...args) => {
     set(...args);
-    if (!getTransaction()) {
-      persist.persist();
+    if (!storage || hydrating.get() || getTransaction()) {
+      return;
+    }
+    try {
+      const partialized = partialize(store.get());
+      const serialized = serialize([partialized, version]);
+      storage.setItem(key, serialized);
+    } catch (error) {
+      onError(error, "persist");
     }
   };
 

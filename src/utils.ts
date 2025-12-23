@@ -1,8 +1,38 @@
 import type { StoreListener, EqualFn } from "./create";
 
+// assign
+
+export type Assign<T extends object, U> = Pretty<Omit<T, keyof U> & U>;
+
+type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;
+
+export function assign<T extends object, U>(a: T, b: U): Assign<T, U> {
+  return Object.assign(a, b);
+}
+
+// createScope
+
+export function createScope<T>(value: T) {
+  return {
+    get: () => value,
+    set: (nextValue: T) => {
+      value = nextValue;
+    },
+    act: <U>(scopedValue: T, fn: () => U) => {
+      const saved = value;
+      try {
+        value = scopedValue;
+        return fn();
+      } finally {
+        value = saved;
+      }
+    }
+  };
+}
+
 // shallow
 
-export function shallow<T>(a: T, b: T): boolean {
+export function shallow<T>(a: T, b: T) {
   if (Object.is(a, b)) {
     return true;
   }
@@ -41,14 +71,4 @@ export function slice<T, U>(
       listener(slice, previousSlice);
     }
   };
-}
-
-// assign
-
-export type Assign<T extends object, U> = Pretty<Omit<T, keyof U> & U>;
-
-type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;
-
-export function assign<T extends object, U>(a: T, b: U): Assign<T, U> {
-  return Object.assign(a, b);
 }

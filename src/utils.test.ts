@@ -1,5 +1,94 @@
 import { test, expect, mock, describe } from "bun:test";
-import { assign, shallow, slice } from "./utils";
+import { assign, shallow, slice, createScope } from "./utils";
+
+describe("assign", () => {
+  test("assigns properties from the second object to the first", () => {
+    const obj1 = { a: 1, b: 2 };
+    const obj2 = { a: 3, c: 4 };
+    const result = assign(obj1, obj2);
+    expect(result).toEqual({ a: 3, b: 2, c: 4 });
+  });
+
+  test("mutates and returns the first object", () => {
+    const obj1 = { a: 1 };
+    const obj2 = { a: 2 };
+    const result = assign(obj1, obj2);
+    expect(result).toBe(obj1);
+    expect(obj1).toEqual({ a: 2 });
+  });
+});
+
+describe("createScope", () => {
+  test("returns object with get, set and act methods", () => {
+    const scope = createScope(42);
+    expect(scope.get).toBeFunction();
+    expect(scope.set).toBeFunction();
+    expect(scope.act).toBeFunction();
+  });
+
+  test("get returns initial value", () => {
+    const scope = createScope("initial");
+    expect(scope.get()).toBe("initial");
+  });
+
+  test("act temporarily changes value and restores it", () => {
+    const scope = createScope("original");
+    expect(scope.get()).toBe("original");
+
+    scope.act("temporary", () => {
+      expect(scope.get()).toBe("temporary");
+    });
+
+    expect(scope.get()).toBe("original");
+  });
+
+  test("act returns result of callback", () => {
+    const scope = createScope(0);
+    const result = scope.act(5, () => "callback result");
+    expect(result).toBe("callback result");
+  });
+
+  test("act restores value even when callback throws", () => {
+    const scope = createScope("safe");
+
+    expect(() => {
+      scope.act("dangerous", () => {
+        throw new Error("test error");
+      });
+    }).toThrow("test error");
+
+    expect(scope.get()).toBe("safe");
+  });
+
+  test("nested scopes work correctly", () => {
+    const scope = createScope("level0");
+
+    scope.act("level1", () => {
+      expect(scope.get()).toBe("level1");
+      scope.act("level2", () => {
+        expect(scope.get()).toBe("level2");
+      });
+      expect(scope.get()).toBe("level1");
+    });
+
+    expect(scope.get()).toBe("level0");
+  });
+
+  test("set permanently changes the value", () => {
+    const scope = createScope("original");
+
+    expect(scope.get()).toBe("original");
+
+    scope.set("new value");
+    expect(scope.get()).toBe("new value");
+
+    scope.act("temporary", () => {
+      expect(scope.get()).toBe("temporary");
+    });
+
+    expect(scope.get()).toBe("new value");
+  });
+});
 
 describe("shallow", () => {
   test("returns true for same object reference", () => {
@@ -232,22 +321,5 @@ describe("slice", () => {
     expect(callback).toHaveBeenCalledTimes(2);
     expect(callback).toHaveBeenNthCalledWith(1, "second", "first");
     expect(callback).toHaveBeenNthCalledWith(2, "third", "second");
-  });
-});
-
-describe("assign", () => {
-  test("assigns properties from the second object to the first", () => {
-    const obj1 = { a: 1, b: 2 };
-    const obj2 = { a: 3, c: 4 };
-    const result = assign(obj1, obj2);
-    expect(result).toEqual({ a: 3, b: 2, c: 4 });
-  });
-
-  test("mutates and returns the first object", () => {
-    const obj1 = { a: 1 };
-    const obj2 = { a: 2 };
-    const result = assign(obj1, obj2);
-    expect(result).toBe(obj1);
-    expect(obj1).toEqual({ a: 2 });
   });
 });

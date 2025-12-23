@@ -15,16 +15,14 @@ export function object<S extends Store<any>>(store: S) {
   type T = State<S>;
   return assign<S, ObjectStore<T>>(store, {
     assign: (...nextStates) => {
-      const state = store.get();
-      let merged = state;
-      for (const nextState of nextStates) {
-        const changes =
+      const state = nextStates.reduce((state, nextState) => {
+        const partial =
           typeof nextState === "function"
-            ? (nextState as (state: T) => T | Partial<T>)(merged)
+            ? (nextState as (state: T) => T | Partial<T>)(state)
             : nextState;
-        merged = { ...merged, ...changes };
-      }
-      store.set(() => merged);
+        return { ...state, ...partial };
+      }, store.get());
+      store.set(() => state);
     }
   });
 }

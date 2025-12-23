@@ -1,5 +1,6 @@
 import type { Store } from "./create";
 import type { Internals } from "./internals";
+import { createScope } from "./utils";
 
 export interface Transaction {
   readonly parent: Transaction | null;
@@ -8,28 +9,19 @@ export interface Transaction {
   commit: () => void;
 }
 
-let currentTx: Transaction | null = null;
+const scope = createScope<Transaction | null>(null);
 
 export function getTransaction() {
-  return currentTx;
+  return scope.get();
 }
 
-export function createTransaction(parent = currentTx) {
-  const act = <T>(tx: Transaction | null, fn: () => T) => {
-    const saved = currentTx;
-    try {
-      currentTx = tx;
-      return fn();
-    } finally {
-      currentTx = saved;
-    }
-  };
+export function createTransaction(parent = getTransaction()) {
   const tx: Transaction = {
     parent,
     forks: new Map(),
-    act: fn => act(tx, fn),
+    act: fn => scope.act(tx, fn),
     commit: () => {
-      act(parent, () => {
+      scope.act(parent, () => {
         tx.forks.forEach((internals, store) =>
           store.set(() => internals.state)
         );
