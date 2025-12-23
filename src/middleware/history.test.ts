@@ -1,7 +1,7 @@
 import { test, expect, mock, describe } from "bun:test";
 import * as jsondiffpatch from "jsondiffpatch";
-import { create } from "../create.js";
-import { history, unchanged } from "./history.js";
+import { create } from "../create";
+import { history, unchanged } from "./history";
 
 describe("history middleware", () => {
   test("adds history property to store", () => {
