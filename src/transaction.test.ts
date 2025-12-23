@@ -389,4 +389,36 @@ describe("nested transactions", () => {
     expect(listener).toHaveBeenCalledTimes(2);
     expect(store.get()).toEqual({ count: 2 });
   });
+
+  test("async nested transactions commit independently", async () => {
+    const store = create({ count: 0 });
+    const listener = mock();
+    store.subscribe(listener);
+
+    await transaction(async act => {
+      await Promise.resolve();
+      act(() => store.set({ count: 1 }));
+
+      await act(() =>
+        transaction(async act => {
+          await Promise.resolve();
+          act(() => {
+            expect(store.get()).toEqual({ count: 1 });
+            store.set({ count: 2 });
+          });
+          await Promise.resolve();
+        })
+      );
+
+      act(() => {
+        expect(store.get()).toEqual({ count: 2 });
+        store.set({ count: 3 });
+      });
+      await Promise.resolve();
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ count: 3 }, { count: 0 });
+    expect(store.get()).toEqual({ count: 3 });
+  });
 });
