@@ -1,5 +1,5 @@
 import { test, expect, mock, describe } from "bun:test";
-import { shallow, slice } from "./utils";
+import { assign, shallow, slice } from "./utils";
 
 describe("shallow", () => {
   test("returns true for same object reference", () => {
@@ -232,5 +232,22 @@ describe("slice", () => {
     expect(callback).toHaveBeenCalledTimes(2);
     expect(callback).toHaveBeenNthCalledWith(1, "second", "first");
     expect(callback).toHaveBeenNthCalledWith(2, "third", "second");
+  });
+});
+
+describe("assign", () => {
+  test("assigns properties from the second object to the first", () => {
+    const obj1 = { a: 1, b: 2 };
+    const obj2 = { a: 3, c: 4 };
+    const result = assign(obj1, obj2);
+    expect(result).toEqual({ a: 3, b: 2, c: 4 });
+  });
+
+  test("mutates and returns the first object", () => {
+    const obj1 = { a: 1 };
+    const obj2 = { a: 2 };
+    const result = assign(obj1, obj2);
+    expect(result).toBe(obj1);
+    expect(obj1).toEqual({ a: 2 });
   });
 });
