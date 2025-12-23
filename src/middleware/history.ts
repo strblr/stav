@@ -93,9 +93,9 @@ export function history<S extends Store<any>, D = State<S>>(
 
   const { set } = store;
 
-  store.set = nextState => {
+  store.set = (...args) => {
     const previousState = store.get();
-    set(nextState);
+    set(...args);
     if (!history.get().tracking) return;
     const state = store.get();
     const delta = diff(state, previousState);

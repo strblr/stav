@@ -98,8 +98,8 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
   );
 
   const { set } = store;
-  store.set = nextState => {
-    set(nextState);
+  store.set = (...args) => {
+    set(...args);
     if (!getTransaction()) {
       persist.persist();
     }
