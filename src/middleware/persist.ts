@@ -16,7 +16,7 @@ export interface PersistOptions<T, P, R> {
   key?: string;
   version?: number;
   autoHydrate?: boolean;
-  storage?: StorageLike<R>;
+  storage?: StorageLike<R> | null;
   partialize?: (state: T) => P;
   serialize?: (partialized: Versioned<P>) => R;
   deserialize?: (serialized: R) => Versioned<P>;
@@ -35,12 +35,12 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
   >;
 
   const {
-    key = "stav-persist",
+    key = "stav/persist",
     version = 1,
     autoHydrate = true,
     storage = typeof window !== "undefined"
       ? (window.localStorage as Default<"storage">)
-      : undefined,
+      : null,
     partialize = (state => state) as Default<"partialize">,
     serialize = JSON.stringify as Default<"serialize">,
     deserialize = JSON.parse as Default<"deserialize">,
