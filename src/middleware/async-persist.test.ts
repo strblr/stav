@@ -260,7 +260,7 @@ describe("hydrate", () => {
 
     await store.persist.hydrate();
     expect(store.get()).toEqual({ count: 0 });
-    expect(store.persist.get().hydrated).toBe(false);
+    expect(store.persist.get().hydrated).toBe(true);
   });
 
   test("auto-hydrates when autoHydrate is true (default)", async () => {

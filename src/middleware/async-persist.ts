@@ -63,21 +63,26 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
         if (!storage || persist.get().hydrating || getTransaction()) {
           return;
         }
+        const success = () => {
+          persist.assign({ hydrated: true });
+        };
         try {
           persist.assign({ hydrating: true });
           const serialized = await storage.getItem(key);
           if (serialized === null) {
-            return;
+            return success();
           }
           let [partialized, storedVersion] = deserialize(serialized);
           if (storedVersion !== version) {
-            if (!migrate) return;
+            if (!migrate) {
+              return success();
+            }
             partialized = await migrate(partialized, storedVersion);
           }
           const state = store.get();
           const nextState = merge(partialized, state);
           store.set(nextState);
-          persist.assign({ hydrated: true });
+          success();
         } catch (error) {
           onError(error, "hydrate");
           throw error;
