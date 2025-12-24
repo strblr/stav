@@ -30,6 +30,40 @@ export function createScope<T>(value: T) {
   };
 }
 
+// slice
+
+export function slice<T, U>(
+  selector: (state: T) => U,
+  listener: StoreListener<U>,
+  equalFn: EqualFn<U> = Object.is
+): StoreListener<T> {
+  return (state, previousState) => {
+    const slice = selector(state);
+    const previousSlice = selector(previousState);
+    if (!equalFn(previousSlice, slice)) {
+      listener(slice, previousSlice);
+    }
+  };
+}
+
+// debounce
+
+export function debounce<T>(fn: (...args: T[]) => void, delay: number) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  const cancel = () => {
+    if (timeout !== null) {
+      clearTimeout(timeout);
+    }
+  };
+  return Object.assign(
+    (...args: T[]) => {
+      cancel();
+      timeout = setTimeout(() => fn(...args), delay);
+    },
+    { cancel }
+  );
+}
+
 // shallow
 
 export function shallow<T>(a: T, b: T) {
@@ -123,20 +157,4 @@ export function deep<T>(a: T, b: T) {
     }
   }
   return true;
-}
-
-// slice
-
-export function slice<T, U>(
-  selector: (state: T) => U,
-  listener: StoreListener<U>,
-  equalFn: EqualFn<U> = Object.is
-): StoreListener<T> {
-  return (state, previousState) => {
-    const slice = selector(state);
-    const previousSlice = selector(previousState);
-    if (!equalFn(previousSlice, slice)) {
-      listener(slice, previousSlice);
-    }
-  };
 }
