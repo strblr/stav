@@ -1,7 +1,7 @@
 import type { Store, State } from "../create";
 import { create } from "./object.js";
 import { getTransaction } from "../transaction.js";
-import { assign, createScope } from "../utils.js";
+import { assign } from "../utils.js";
 
 export interface PersistStore {
   persist: ReturnType<
@@ -51,8 +51,6 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   } = options;
 
-  const hydrating = createScope(false);
-
   const persist = create(
     {
       hydrating: false,
@@ -60,7 +58,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     },
     {
       hydrate: () => {
-        if (!storage || hydrating.get()) {
+        if (!storage || persist.get().hydrating || getTransaction()) {
           return;
         }
         try {
@@ -76,7 +74,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
           }
           const state = store.get();
           const nextState = merge(partialized, state);
-          hydrating.act(true, () => store.set(nextState));
+          store.set(nextState);
           persist.assign({ hydrated: true });
         } catch (error) {
           onError(error, "hydrate");
@@ -91,7 +89,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
 
   store.set = (...args) => {
     set(...args);
-    if (!storage || hydrating.get() || getTransaction()) {
+    if (!storage || persist.get().hydrating || getTransaction()) {
       return;
     }
     try {
