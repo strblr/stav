@@ -80,6 +80,7 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
           persist.assign({ hydrated: true });
         } catch (error) {
           onError(error, "hydrate");
+          throw error;
         } finally {
           persist.assign({ hydrating: false });
         }

@@ -145,6 +145,33 @@ describe("persist on state change", () => {
     );
   });
 
+  test("default onError handler logs and throws error", async () => {
+    const storage = createMockAsyncStorage();
+    const consoleError = mock();
+    const originalConsoleError = console.error;
+    console.error = consoleError;
+
+    const store = persist(create({ count: 0 }), {
+      storage: {
+        getItem: async () => {
+          throw new Error("storage read failed");
+        },
+        setItem: storage.setItem
+      },
+      autoHydrate: false
+    });
+
+    await expect(store.persist.hydrate()).rejects.toThrow(
+      "storage read failed"
+    );
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.anything(),
+      new Error("storage read failed")
+    );
+    console.error = originalConsoleError;
+  });
+
   test("sets persisting flag to false after persist completes", async () => {
     const storage = createMockAsyncStorage();
     const store = persist(create({ count: 0 }), {
@@ -252,13 +279,18 @@ describe("hydrate", () => {
     const store = persist(create({ count: 0 }), {
       storage: {
         getItem: async () => {
+          await sleep(1);
           throw new Error("storage read failed");
         },
         setItem: storage.setItem
       },
-      onError: errorHandler
+      onError: errorHandler,
+      autoHydrate: false
     });
 
+    await expect(store.persist.hydrate()).rejects.toThrow(
+      "storage read failed"
+    );
     await sleep(10);
     expect(errorHandler).toHaveBeenCalledTimes(1);
     expect(errorHandler).toHaveBeenCalledWith(
@@ -277,9 +309,11 @@ describe("hydrate", () => {
     const store = persist(create({ count: 0 }), {
       storage,
       deserialize: (str: string) => JSON.parse(str),
-      onError: errorHandler
+      onError: errorHandler,
+      autoHydrate: false
     });
 
+    await expect(store.persist.hydrate()).rejects.toThrow(SyntaxError);
     await sleep(10);
     expect(errorHandler).toHaveBeenCalledTimes(1);
     expect(errorHandler).toHaveBeenCalledWith(expect.any(Error), "hydrate");
@@ -782,7 +816,8 @@ describe("edge cases", () => {
       autoHydrate: false
     });
 
-    await store.persist.hydrate();
+    await expect(store.persist.hydrate()).rejects.toThrow(Error);
+    await sleep(10);
     expect(store.persist.get().hydrating).toBe(false);
   });
 
