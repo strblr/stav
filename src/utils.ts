@@ -93,7 +93,7 @@ export function shallow<T>(a: T, b: T) {
 
 // deep
 
-export function deep<T>(a: T, b: T) {
+export function deep<T>(a: T, b: T): boolean {
   if (Object.is(a, b)) {
     return true;
   }
@@ -146,6 +146,11 @@ export function deep<T>(a: T, b: T) {
       }
     }
     return true;
+  }
+  if (a instanceof Error && b instanceof Error) {
+    return (
+      a.name === b.name && a.message === b.message && deep(a.cause, b.cause)
+    );
   }
   const keys = Object.keys(a) as (keyof T)[];
   if (keys.length !== Object.keys(b).length) {

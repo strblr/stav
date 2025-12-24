@@ -571,6 +571,47 @@ describe("deep", () => {
     expect(deep(regex2, regex1)).toBe(false);
   });
 
+  test("returns true for equal Error objects", () => {
+    const error1 = new Error("test message", { cause: { a: 1 } });
+    const error2 = new Error("test message", { cause: { a: 1 } });
+    expect(deep(error1, error2)).toBe(true);
+    expect(deep(error2, error1)).toBe(true);
+    const error3 = new TypeError("test");
+    const error4 = new TypeError("test");
+    expect(deep(error3, error4)).toBe(true);
+    expect(deep(error4, error3)).toBe(true);
+  });
+
+  test("returns false for Error objects from different constructors", () => {
+    const error1 = new Error("test message");
+    const error2 = new RangeError("test message");
+    expect(deep(error1, error2)).toBe(false);
+    expect(deep(error2, error1)).toBe(false);
+  });
+
+  test("returns false for Error objects with different names", () => {
+    const error1 = new Error("test message");
+    error1.name = "Error";
+    const error2 = new Error("test message");
+    error2.name = "Error2";
+    expect(deep(error1, error2)).toBe(false);
+    expect(deep(error2, error1)).toBe(false);
+  });
+
+  test("returns false for Error objects with different messages", () => {
+    const error1 = new Error("test message", { cause: { a: 1 } });
+    const error2 = new Error("different message", { cause: { a: 1 } });
+    expect(deep(error1, error2)).toBe(false);
+    expect(deep(error2, error1)).toBe(false);
+  });
+
+  test("returns false for Error objects with different causes", () => {
+    const error1 = new Error("test message", { cause: { a: 1 } });
+    const error2 = new Error("test message", { cause: { a: 2 } });
+    expect(deep(error1, error2)).toBe(false);
+    expect(deep(error2, error1)).toBe(false);
+  });
+
   test("returns true for primitives with Object.is semantics", () => {
     expect(deep(NaN, NaN)).toBe(true);
     expect(deep(42, 42)).toBe(true);
