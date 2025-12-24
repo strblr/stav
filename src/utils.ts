@@ -57,6 +57,74 @@ export function shallow<T>(a: T, b: T) {
   return true;
 }
 
+// deep
+
+export function deep<T>(a: T, b: T) {
+  if (Object.is(a, b)) {
+    return true;
+  }
+  if (
+    typeof a !== "object" ||
+    typeof b !== "object" ||
+    a === null ||
+    b === null ||
+    a.constructor !== b.constructor
+  ) {
+    return false;
+  }
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
+  if (a instanceof RegExp && b instanceof RegExp) {
+    return a.source === b.source && a.flags === b.flags;
+  }
+  if (a instanceof Map && b instanceof Map) {
+    if (a.size !== b.size) {
+      return false;
+    }
+    for (const [key, value] of a) {
+      if (!b.has(key) || !deep(value, b.get(key))) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (a instanceof Set && b instanceof Set) {
+    if (a.size !== b.size) {
+      return false;
+    }
+    for (const value of a) {
+      if (!b.has(value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  if (ArrayBuffer.isView(a) && ArrayBuffer.isView(b)) {
+    if (a.byteLength !== b.byteLength || a.byteOffset !== b.byteOffset) {
+      return false;
+    }
+    const viewA = new Uint8Array(a.buffer);
+    const viewB = new Uint8Array(b.buffer);
+    for (let i = 0; i < viewA.length; i++) {
+      if (viewA[i] !== viewB[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+  const keys = Object.keys(a) as (keyof T)[];
+  if (keys.length !== Object.keys(b).length) {
+    return false;
+  }
+  for (const key of keys) {
+    if (!deep(a[key], b[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // slice
 
 export function slice<T, U>(

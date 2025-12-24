@@ -1,5 +1,5 @@
 import { test, expect, mock, describe } from "bun:test";
-import { assign, shallow, slice, createScope } from "./utils";
+import { assign, shallow, slice, createScope, deep } from "./utils";
 
 describe("assign", () => {
   test("assigns properties from the second object to the first", () => {
@@ -181,6 +181,459 @@ describe("shallow", () => {
     const obj2 = { a: "1" } as any;
     expect(shallow(obj1, obj2)).toBe(false);
     expect(shallow(obj2, obj1)).toBe(false);
+  });
+});
+
+describe("deep", () => {
+  test("returns true for same object reference", () => {
+    const obj = { a: 1 };
+    expect(deep(obj, obj)).toBe(true);
+  });
+
+  test("returns true for deeply equal objects", () => {
+    const obj1 = { a: 1, b: { c: 2, d: { e: 3 } } };
+    const obj2 = { a: 1, b: { c: 2, d: { e: 3 } } };
+    expect(deep(obj1, obj2)).toBe(true);
+    expect(deep(obj2, obj1)).toBe(true);
+  });
+
+  test("returns false for objects with different nested values", () => {
+    const obj1 = { a: 1, b: { c: { d: { e: 2 } } } };
+    const obj2 = { a: 1, b: { c: { d: { e: 3 } } } };
+    expect(deep(obj1, obj2)).toBe(false);
+    expect(deep(obj2, obj1)).toBe(false);
+  });
+
+  test("returns false for objects with different keys", () => {
+    const obj1 = { a: 1 };
+    const obj2 = { a: 1, b: 2 };
+    expect(deep(obj1, obj2)).toBe(false);
+    expect(deep(obj2, obj1)).toBe(false);
+  });
+
+  test("returns false for null and object", () => {
+    const obj = { a: 1 };
+    expect(deep(obj, null as any)).toBe(false);
+    expect(deep(null as any, obj)).toBe(false);
+  });
+
+  test("returns false for undefined and object", () => {
+    const obj = { a: 1 };
+    expect(deep(obj, undefined as any)).toBe(false);
+    expect(deep(undefined as any, obj)).toBe(false);
+  });
+
+  test("returns false for object and array", () => {
+    const obj = { "0": 1, "1": 2 };
+    const arr = [1, 2] as any;
+    expect(deep(obj, arr)).toBe(false);
+    expect(deep(arr, obj)).toBe(false);
+  });
+
+  test("returns true for deeply equal arrays", () => {
+    const arr1 = [1, [2, 3], [4, [5, 6]]];
+    const arr2 = [1, [2, 3], [4, [5, 6]]];
+    expect(deep(arr1, arr2)).toBe(true);
+    expect(deep(arr2, arr1)).toBe(true);
+  });
+
+  test("returns false for arrays with different nested elements", () => {
+    const arr1 = [1, [2, 3], [4, [5, 6]]];
+    const arr2 = [1, [2, 3], [4, [5, 7]]];
+    expect(deep(arr1, arr2)).toBe(false);
+    expect(deep(arr2, arr1)).toBe(false);
+  });
+
+  test("returns false for arrays with different lengths", () => {
+    const arr1 = [1, 2, 3];
+    const arr2 = [1, 2, 3, 4];
+    expect(deep(arr1, arr2)).toBe(false);
+    expect(deep(arr2, arr1)).toBe(false);
+  });
+
+  test("handles arrays nested in objects", () => {
+    const obj1 = { nested: [1, 2, 3] };
+    const obj2 = { nested: [1, 2, 3] };
+    expect(deep(obj1, obj2)).toBe(true);
+    expect(deep(obj2, obj1)).toBe(true);
+
+    const obj3 = { nested: [1, 2, 4] };
+    expect(deep(obj1, obj3)).toBe(false);
+    expect(deep(obj3, obj1)).toBe(false);
+  });
+
+  test("handles objects nested in arrays", () => {
+    const arr1 = [{ x: 1 }, { y: 2 }];
+    const arr2 = [{ x: 1 }, { y: 2 }];
+    expect(deep(arr1, arr2)).toBe(true);
+    expect(deep(arr2, arr1)).toBe(true);
+
+    const arr3 = [{ x: 1 }, { y: 3 }];
+    expect(deep(arr1, arr3)).toBe(false);
+    expect(deep(arr3, arr1)).toBe(false);
+  });
+
+  test("returns true for equal Date objects", () => {
+    const date1 = new Date("2024-01-01");
+    const date2 = new Date("2024-01-01");
+    expect(deep(date1, date2)).toBe(true);
+    expect(deep(date2, date1)).toBe(true);
+  });
+
+  test("returns false for different Date objects", () => {
+    const date1 = new Date("2024-01-01");
+    const date2 = new Date("2024-01-02");
+    expect(deep(date1, date2)).toBe(false);
+    expect(deep(date2, date1)).toBe(false);
+  });
+
+  test("returns true for equal RegExp objects", () => {
+    const regex1 = /test/gi;
+    const regex2 = /test/gi;
+    expect(deep(regex1, regex2)).toBe(true);
+    expect(deep(regex2, regex1)).toBe(true);
+  });
+
+  test("returns false for RegExp with different patterns", () => {
+    const regex1 = /test/gi;
+    const regex2 = /other/gi;
+    expect(deep(regex1, regex2)).toBe(false);
+    expect(deep(regex2, regex1)).toBe(false);
+  });
+
+  test("returns false for RegExp with different flags", () => {
+    const regex1 = /test/gi;
+    const regex2 = /test/g;
+    expect(deep(regex1, regex2)).toBe(false);
+    expect(deep(regex2, regex1)).toBe(false);
+  });
+
+  test("returns true for primitives with Object.is semantics", () => {
+    expect(deep(NaN, NaN)).toBe(true);
+    expect(deep(42, 42)).toBe(true);
+    expect(deep("test", "test")).toBe(true);
+    expect(deep(true, true)).toBe(true);
+    expect(deep(null, null)).toBe(true);
+    expect(deep(undefined, undefined)).toBe(true);
+    expect(deep(Infinity, Infinity)).toBe(true);
+    expect(deep(-Infinity, -Infinity)).toBe(true);
+  });
+
+  test("returns false for different primitive types", () => {
+    expect(deep(0, -0)).toBe(false);
+    expect(deep(-0, 0)).toBe(false);
+    expect(deep(1, "1" as any)).toBe(false);
+    expect(deep(true, 1 as any)).toBe(false);
+    expect(deep(null, undefined as any)).toBe(false);
+    expect(deep(Infinity, -Infinity)).toBe(false);
+  });
+
+  describe("Map", () => {
+    test("returns true for equal Map objects", () => {
+      const map1 = new Map([
+        ["a", 1],
+        ["b", 2]
+      ]);
+      const map2 = new Map([
+        ["a", 1],
+        ["b", 2]
+      ]);
+      expect(deep(map1, map2)).toBe(true);
+      expect(deep(map2, map1)).toBe(true);
+    });
+
+    test("returns false for Map objects with different sizes", () => {
+      const map1 = new Map([["a", 1]]);
+      const map2 = new Map([
+        ["a", 1],
+        ["b", 2]
+      ]);
+      expect(deep(map1, map2)).toBe(false);
+      expect(deep(map2, map1)).toBe(false);
+    });
+
+    test("returns false for Map objects with different keys", () => {
+      const map1 = new Map([["a", 1]]);
+      const map2 = new Map([["b", 1]]);
+      expect(deep(map1, map2)).toBe(false);
+      expect(deep(map2, map1)).toBe(false);
+    });
+
+    test("returns false for Map objects with different values", () => {
+      const map1 = new Map([["a", 1]]);
+      const map2 = new Map([["a", 2]]);
+      expect(deep(map1, map2)).toBe(false);
+      expect(deep(map2, map1)).toBe(false);
+    });
+
+    test("returns true for Map objects with nested equal values", () => {
+      const map1 = new Map([["a", { nested: [1, 2, 3] }]]);
+      const map2 = new Map([["a", { nested: [1, 2, 3] }]]);
+      expect(deep(map1, map2)).toBe(true);
+      expect(deep(map2, map1)).toBe(true);
+    });
+
+    test("returns false for Map objects with nested different values", () => {
+      const map1 = new Map([["a", { nested: [1, 2, 3] }]]);
+      const map2 = new Map([["a", { nested: [1, 2, 4] }]]);
+      expect(deep(map1, map2)).toBe(false);
+      expect(deep(map2, map1)).toBe(false);
+    });
+  });
+
+  describe("Set", () => {
+    test("returns true for equal Set objects", () => {
+      const set1 = new Set([1, 2, 3]);
+      const set2 = new Set([1, 2, 3]);
+      expect(deep(set1, set2)).toBe(true);
+      expect(deep(set2, set1)).toBe(true);
+    });
+
+    test("returns false for Set objects with different sizes", () => {
+      const set1 = new Set([1, 2]);
+      const set2 = new Set([1, 2, 3]);
+      expect(deep(set1, set2)).toBe(false);
+      expect(deep(set2, set1)).toBe(false);
+    });
+
+    test("returns false for Set objects with different values", () => {
+      const set1 = new Set([1, 2, 3]);
+      const set2 = new Set([1, 2, 4]);
+      expect(deep(set1, set2)).toBe(false);
+      expect(deep(set2, set1)).toBe(false);
+    });
+
+    test("returns true for Set objects with same object keys", () => {
+      const obj = { value: 1 };
+      const obj2 = { value: 2 };
+      const set1 = new Set([obj, obj2]);
+      const set2 = new Set([obj, obj2]);
+      expect(deep(set1, set2)).toBe(true);
+      expect(deep(set2, set1)).toBe(true);
+    });
+
+    test("returns false for Set objects with different object keys", () => {
+      const obj = { value: 1 };
+      const obj2 = { value: 2 };
+      const set1 = new Set([obj, obj2]);
+      const set2 = new Set([obj, { ...obj2 }]);
+      expect(deep(set1, set2)).toBe(false);
+      expect(deep(set2, set1)).toBe(false);
+    });
+  });
+
+  describe("TypedArrays", () => {
+    test("returns true for equal Int8Array objects", () => {
+      const arr1 = new Int8Array([1, 2, 3, 4]);
+      const arr2 = new Int8Array([1, 2, 3, 4]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns false for different Int8Array objects", () => {
+      const arr1 = new Int8Array([1, 2, 3]);
+      const arr2 = new Int8Array([1, 2, 4]);
+      expect(deep(arr1, arr2)).toBe(false);
+      expect(deep(arr2, arr1)).toBe(false);
+    });
+
+    test("returns false for Int8Array objects with different lengths", () => {
+      const arr1 = new Int8Array([1, 2, 3]);
+      const arr2 = new Int8Array([1, 2, 3, 4]);
+      expect(deep(arr1, arr2)).toBe(false);
+      expect(deep(arr2, arr1)).toBe(false);
+    });
+
+    test("returns true for equal Uint8Array objects", () => {
+      const arr1 = new Uint8Array([1, 2, 3, 4]);
+      const arr2 = new Uint8Array([1, 2, 3, 4]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Uint8ClampedArray objects", () => {
+      const arr1 = new Uint8ClampedArray([0, 127, 255]);
+      const arr2 = new Uint8ClampedArray([0, 127, 255]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Int16Array objects", () => {
+      const arr1 = new Int16Array([1000, -1000, 2000]);
+      const arr2 = new Int16Array([1000, -1000, 2000]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Uint16Array objects", () => {
+      const arr1 = new Uint16Array([1000, 2000, 3000]);
+      const arr2 = new Uint16Array([1000, 2000, 3000]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Int32Array objects", () => {
+      const arr1 = new Int32Array([100000, -100000, 200000]);
+      const arr2 = new Int32Array([100000, -100000, 200000]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Uint32Array objects", () => {
+      const arr1 = new Uint32Array([100000, 200000, 300000]);
+      const arr2 = new Uint32Array([100000, 200000, 300000]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Float32Array objects", () => {
+      const arr1 = new Float32Array([1.5, 2.5, 3.5]);
+      const arr2 = new Float32Array([1.5, 2.5, 3.5]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal Float64Array objects", () => {
+      const arr1 = new Float64Array([1.5, 2.5, 3.5]);
+      const arr2 = new Float64Array([1.5, 2.5, 3.5]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal BigInt64Array objects", () => {
+      const arr1 = new BigInt64Array([1n, 2n, 3n]);
+      const arr2 = new BigInt64Array([1n, 2n, 3n]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns true for equal BigUint64Array objects", () => {
+      const arr1 = new BigUint64Array([1n, 2n, 3n]);
+      const arr2 = new BigUint64Array([1n, 2n, 3n]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("returns false for different Float32Array objects", () => {
+      const arr1 = new Float32Array([1.5, 2.5, 3.5]);
+      const arr2 = new Float32Array([1.5, 2.5, 3.6]);
+      expect(deep(arr1, arr2)).toBe(false);
+      expect(deep(arr2, arr1)).toBe(false);
+    });
+
+    test("returns false for TypedArrays with different types but same values", () => {
+      const arr1 = new Int32Array([1, 2, 3]);
+      const arr2 = new Uint32Array([1, 2, 3]);
+      expect(deep(arr1 as any, arr2 as any)).toBe(false);
+      expect(deep(arr2 as any, arr1 as any)).toBe(false);
+    });
+
+    test("returns true for equal DataView objects", () => {
+      const buffer1 = new ArrayBuffer(8);
+      const view1 = new DataView(buffer1);
+      view1.setInt32(0, 42);
+      view1.setFloat32(4, 3.14);
+
+      const buffer2 = new ArrayBuffer(8);
+      const view2 = new DataView(buffer2);
+      view2.setInt32(0, 42);
+      view2.setFloat32(4, 3.14);
+
+      expect(deep(view1, view2)).toBe(true);
+      expect(deep(view2, view1)).toBe(true);
+    });
+
+    test("returns false for different DataView objects", () => {
+      const buffer1 = new ArrayBuffer(8);
+      const view1 = new DataView(buffer1);
+      view1.setInt32(0, 42);
+
+      const buffer2 = new ArrayBuffer(8);
+      const view2 = new DataView(buffer2);
+      view2.setInt32(0, 43);
+
+      expect(deep(view1, view2)).toBe(false);
+      expect(deep(view2, view1)).toBe(false);
+    });
+
+    test("handles TypedArrays with views on same buffer", () => {
+      const buffer = new ArrayBuffer(16);
+      const arr1 = new Int32Array(buffer, 0, 4);
+      arr1.set([1, 2, 3, 4]);
+      const arr2 = new Int32Array(buffer, 0, 4);
+
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+
+    test("handles TypedArrays with different offsets", () => {
+      const buffer1 = new ArrayBuffer(16);
+      const arr1 = new Int32Array(buffer1, 4, 2);
+      arr1.set([1, 2]);
+
+      const buffer2 = new ArrayBuffer(16);
+      const arr2 = new Int32Array(buffer2, 0, 2);
+      arr2.set([1, 2]);
+
+      expect(deep(arr1, arr2)).toBe(false);
+      expect(deep(arr2, arr1)).toBe(false);
+    });
+
+    test("handles TypedArrays nested in objects", () => {
+      const obj1 = { data: new Uint8Array([1, 2, 3]) };
+      const obj2 = { data: new Uint8Array([1, 2, 3]) };
+      expect(deep(obj1, obj2)).toBe(true);
+      expect(deep(obj2, obj1)).toBe(true);
+
+      const obj3 = { data: new Uint8Array([1, 2, 4]) };
+      expect(deep(obj1, obj3)).toBe(false);
+      expect(deep(obj3, obj1)).toBe(false);
+    });
+
+    test("handles empty TypedArrays", () => {
+      const arr1 = new Uint8Array([]);
+      const arr2 = new Uint8Array([]);
+      expect(deep(arr1, arr2)).toBe(true);
+      expect(deep(arr2, arr1)).toBe(true);
+    });
+  });
+
+  test("handles complex nested structures", () => {
+    const complex1 = {
+      arr: [1, 2, { nested: "value" }],
+      obj: { a: 1, b: { c: 2 } },
+      date: new Date("2024-01-01"),
+      regex: /test/gi,
+      map: new Map([["key", { value: 1 }]]),
+      set: new Set([1, 2, 3]),
+      int8Array: new Int8Array([1, 2, 3])
+    };
+    const complex2 = {
+      arr: [1, 2, { nested: "value" }],
+      obj: { a: 1, b: { c: 2 } },
+      date: new Date("2024-01-01"),
+      regex: /test/gi,
+      map: new Map([["key", { value: 1 }]]),
+      set: new Set([1, 2, 3]),
+      int8Array: new Int8Array([1, 2, 3])
+    };
+    expect(deep(complex1, complex2)).toBe(true);
+    expect(deep(complex2, complex1)).toBe(true);
+  });
+
+  test("detects differences in complex nested structures", () => {
+    const complex1 = {
+      arr: [1, 2, { nested: "value" }],
+      map: new Map([["key", { value: 1 }]]),
+      Int32Array: new Int32Array([1, 2, 3])
+    };
+    const complex2 = {
+      arr: [1, 2, { nested: "value" }],
+      map: new Map([["key", { value: 2 }]]),
+      Int32Array: new Int32Array([1, 2, 3])
+    };
+    expect(deep(complex1, complex2)).toBe(false);
+    expect(deep(complex2, complex1)).toBe(false);
   });
 });
 

@@ -617,7 +617,7 @@ describe("edge cases", () => {
   test("multiple hydrate calls are idempotent when already hydrated", () => {
     const storage = createMockStorage();
     storage.setItem("stav/persist", JSON.stringify([{ count: 10 }, 1]));
-    const getItem = mock(() => storage.data["stav/persist"]);
+    const getItem = mock(() => storage.data.get("stav/persist") ?? null);
 
     const store = persist(create({ count: 0 }), {
       storage: { getItem, setItem: storage.setItem },
