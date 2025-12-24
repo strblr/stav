@@ -283,6 +283,21 @@ describe("options: version/migrate", () => {
     expect(store.get()).toEqual({ count: 0 });
   });
 
+  test("hydrated is true even if version mismatch and no migrate", () => {
+    const storage = createMockStorage();
+    storage.setItem("stav/persist", JSON.stringify([{ count: 10 }, 1]));
+
+    const store = persist(create({ count: 0 }), {
+      storage,
+      version: 2,
+      autoHydrate: false
+    });
+
+    store.persist.hydrate();
+    expect(store.persist.get().hydrated).toBe(true);
+    expect(store.get()).toEqual({ count: 0 });
+  });
+
   test("calls migrate on version mismatch", () => {
     const storage = createMockStorage();
     storage.setItem("stav/persist", JSON.stringify([{ oldCount: 10 }, 1]));
