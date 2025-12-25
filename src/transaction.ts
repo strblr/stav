@@ -1,6 +1,6 @@
 import type { Store } from "./create";
 import type { Internals } from "./internals";
-import { createScope } from "./utils";
+import { createScope } from "./utils.js";
 
 export interface Transaction {
   readonly parent: Transaction | null;
@@ -10,6 +10,8 @@ export interface Transaction {
 }
 
 const scope = createScope<Transaction | null>(null);
+export const nofork = Symbol("nofork");
+export const nocommit = Symbol("nocommit");
 
 export function getTransaction() {
   return scope.get();
@@ -22,9 +24,11 @@ export function createTransaction(parent = getTransaction()) {
     act: fn => scope.act(tx, fn),
     commit: () => {
       scope.act(parent, () => {
-        tx.forks.forEach((internals, store) =>
-          store.set(() => internals.state)
-        );
+        tx.forks.forEach((internals, store) => {
+          if (!Object.hasOwn(store, nocommit)) {
+            store.set(() => internals.state);
+          }
+        });
       });
     }
   };

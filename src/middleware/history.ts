@@ -1,5 +1,6 @@
 import type { State, Store } from "../create";
 import { create } from "./object.js";
+import { nocommit } from "../transaction.js";
 import { assign, createScope } from "../utils.js";
 
 export interface HistoryStore<D> {
@@ -83,6 +84,7 @@ export function history<S extends Store<any>, D = State<S>>(
     }
   );
 
+  assign(history, { [nocommit]: true });
   const { set } = store;
 
   store.set = (...args) => {

@@ -1,5 +1,5 @@
 import type { Store, StoreListener } from "./create";
-import { getTransaction, type Transaction } from "./transaction.js";
+import { getTransaction, nofork, type Transaction } from "./transaction.js";
 
 export interface Internals<T> {
   state: T;
@@ -15,7 +15,7 @@ function upsertInternals<T>(
   store: Store<T>,
   internals: Internals<T>
 ): Internals<T> {
-  if (!tx) {
+  if (!tx || Object.hasOwn(store, nofork)) {
     return internals;
   }
   let fork = tx.forks.get(store);
