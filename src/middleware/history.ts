@@ -37,7 +37,9 @@ export function history<S extends Store<any>, D = State<S>>(
     diff = (_, targetState) => targetState as D,
     patch = (_, delta) => delta as State<S>
   } = options;
+
   const tracking = createScope(true);
+  const { set } = store;
 
   const history = create(
     {
@@ -85,7 +87,6 @@ export function history<S extends Store<any>, D = State<S>>(
   );
 
   assign(history, { [nocommit]: true });
-  const { set } = store;
 
   store.set = (...args) => {
     const previousState = store.get();

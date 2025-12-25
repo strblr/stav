@@ -24,11 +24,11 @@ export function verbose<S extends Store<any>>(
     logger = console.log
   } = options;
 
+  const { set, subscribe } = store;
+
   if (!enabled) {
     return store;
   }
-
-  const { set, subscribe } = store;
 
   const log = (enabled: boolean, ...parts: any[]) => {
     if (!enabled) return;

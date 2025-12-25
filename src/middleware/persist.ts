@@ -51,6 +51,8 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   } = options;
 
+  const { set } = store;
+
   const persist = create(
     {
       hydrating: false,
@@ -90,8 +92,6 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
       }
     }
   );
-
-  const { set } = store;
 
   store.set = (...args) => {
     set(...args);

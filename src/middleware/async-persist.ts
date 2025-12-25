@@ -52,6 +52,8 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
     }
   } = options;
 
+  const { set } = store;
+
   const persist = create(
     {
       hydrating: false,
@@ -95,8 +97,6 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
       }
     }
   );
-
-  const { set } = store;
 
   const debouncedPersist = debounce(async () => {
     try {
