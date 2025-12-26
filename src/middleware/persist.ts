@@ -1,7 +1,7 @@
 import type { Store, State } from "../create";
 import { create } from "./object.js";
 import { effect } from "./effect.js";
-import { getTransaction } from "../transaction.js";
+import { getTransaction, nofork } from "../transaction.js";
 import { assign } from "../utils.js";
 
 export interface PersistStore {
@@ -91,6 +91,8 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
       }
     }
   );
+
+  assign(persist, { [nofork]: true });
 
   effect(store, state => {
     if (!storage || persist.get().hydrating || getTransaction()) {

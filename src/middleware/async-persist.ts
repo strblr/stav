@@ -2,7 +2,7 @@ import type { Store, State } from "../create";
 import type { Versioned } from "./persist";
 import { create } from "./object.js";
 import { effect } from "./effect.js";
-import { getTransaction } from "../transaction.js";
+import { getTransaction, nofork } from "../transaction.js";
 import { assign, debounce } from "../utils.js";
 
 export interface AsyncPersistStore {
@@ -96,6 +96,8 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
       }
     }
   );
+
+  assign(persist, { [nofork]: true });
 
   const debouncedPersist = debounce(async (state: T) => {
     try {
