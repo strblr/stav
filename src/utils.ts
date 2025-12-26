@@ -4,10 +4,34 @@ import type { StoreListener, EqualFn } from "./create";
 
 export type Assign<T extends object, U> = Pretty<Omit<T, keyof U> & U>;
 
-type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;
-
 export function assign<T extends object, U>(a: T, b: U): Assign<T, U> {
   return Object.assign(a, b);
+}
+
+// pick
+
+export function pick<T extends object, K extends keyof T>(
+  object: T,
+  keys: readonly K[]
+): Pretty<Pick<T, K>> {
+  const result = {} as Pick<T, K>;
+  for (const key of keys) {
+    result[key] = object[key];
+  }
+  return result;
+}
+
+// omit
+
+export function omit<T extends object, K extends keyof T>(
+  object: T,
+  keys: readonly K[]
+): Pretty<Omit<T, K>> {
+  const result = { ...object };
+  for (const key of keys) {
+    delete result[key];
+  }
+  return result;
 }
 
 // createScope
@@ -166,3 +190,7 @@ export function deep<T>(a: T, b: T): boolean {
   }
   return true;
 }
+
+// Utils
+
+type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;

@@ -1,5 +1,14 @@
 import { test, expect, mock, describe } from "bun:test";
-import { assign, shallow, slice, createScope, deep, debounce } from "./utils";
+import {
+  assign,
+  pick,
+  omit,
+  shallow,
+  slice,
+  createScope,
+  deep,
+  debounce
+} from "./utils";
 
 describe("assign", () => {
   test("assigns properties from the second object to the first", () => {
@@ -15,6 +24,70 @@ describe("assign", () => {
     const result = assign(obj1, obj2);
     expect(result).toBe(obj1);
     expect(obj1).toEqual({ a: 2 });
+  });
+});
+
+describe("pick", () => {
+  test("returns a new object", () => {
+    const obj = { a: 1, b: 2, c: 3 };
+    const result = pick(obj, ["a", "c"]);
+    expect(result).not.toBe(obj);
+  });
+
+  test("picks specified properties from object", () => {
+    const obj = { a: 1, b: 2, c: 3 };
+    const result = pick(obj, ["a", "c"]);
+    expect(result).toEqual({ a: 1, c: 3 });
+  });
+
+  test("returns empty object when picking no keys", () => {
+    const obj = { a: 1, b: 2 };
+    const result = pick(obj, []);
+    expect(result).toEqual({});
+  });
+
+  test("picks single property", () => {
+    const obj = { name: "John", age: 30, city: "NYC" };
+    const result = pick(obj, ["name"]);
+    expect(result).toEqual({ name: "John" });
+  });
+
+  test("does not mutate original object", () => {
+    const obj = { a: 1, b: 2, c: 3 };
+    pick(obj, ["a"]);
+    expect(obj).toEqual({ a: 1, b: 2, c: 3 });
+  });
+});
+
+describe("omit", () => {
+  test("returns a new object", () => {
+    const obj = { a: 1, b: 2, c: 3 };
+    const result = omit(obj, ["b", "c"]);
+    expect(result).not.toBe(obj);
+  });
+
+  test("omits specified properties from object", () => {
+    const obj = { a: 1, b: 2, c: 3 };
+    const result = omit(obj, ["b"]);
+    expect(result).toEqual({ a: 1, c: 3 });
+  });
+
+  test("returns copy when omitting no keys", () => {
+    const obj = { a: 1, b: 2 };
+    const result = omit(obj, []);
+    expect(result).toEqual({ a: 1, b: 2 });
+  });
+
+  test("omits multiple properties", () => {
+    const obj = { name: "John", age: 30, city: "NYC", country: "USA" };
+    const result = omit(obj, ["age", "country"]);
+    expect(result).toEqual({ name: "John", city: "NYC" });
+  });
+
+  test("does not mutate original object", () => {
+    const obj = { a: 1, b: 2, c: 3 };
+    omit(obj, ["b"]);
+    expect(obj).toEqual({ a: 1, b: 2, c: 3 });
   });
 });
 
