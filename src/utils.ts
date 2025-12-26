@@ -48,7 +48,10 @@ export function slice<T, U>(
 
 // debounce
 
-export function debounce<T>(fn: (...args: T[]) => void, delay: number) {
+export function debounce<T extends any[]>(
+  fn: (...args: T) => void,
+  delay: number
+) {
   let timeout: ReturnType<typeof setTimeout> | null = null;
   const cancel = () => {
     if (timeout !== null) {
@@ -56,7 +59,7 @@ export function debounce<T>(fn: (...args: T[]) => void, delay: number) {
     }
   };
   return Object.assign(
-    (...args: T[]) => {
+    (...args: T) => {
       cancel();
       timeout = setTimeout(() => fn(...args), delay);
     },
