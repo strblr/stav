@@ -1,5 +1,6 @@
 import type { State, Store } from "../create";
 import { create } from "./object.js";
+import { effect } from "./effect.js";
 import { nocommit } from "../transaction.js";
 import { assign, createScope } from "../utils.js";
 
@@ -39,7 +40,6 @@ export function history<S extends Store<any>, D = State<S>>(
   } = options;
 
   const tracking = createScope(true);
-  const { set } = store;
 
   const history = create(
     {
@@ -88,20 +88,17 @@ export function history<S extends Store<any>, D = State<S>>(
 
   assign(history, { [nocommit]: true });
 
-  store.set = (...args) => {
-    const previousState = store.get();
-    set(...args);
+  effect(store, (state, previousState) => {
     if (!tracking.get() || !history.get().tracking) {
       return;
     }
-    const state = store.get();
     const delta = diff(state, previousState);
     if (delta === unchanged) return;
     history.assign(({ past }) => ({
       past: [delta, ...past].slice(0, limit),
       future: []
     }));
-  };
+  });
 
   return assign<S, HistoryStore<D>>(store, { history });
 }

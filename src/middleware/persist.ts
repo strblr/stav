@@ -1,5 +1,6 @@
 import type { Store, State } from "../create";
 import { create } from "./object.js";
+import { effect } from "./effect.js";
 import { getTransaction } from "../transaction.js";
 import { assign } from "../utils.js";
 
@@ -51,8 +52,6 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   } = options;
 
-  const { set } = store;
-
   const persist = create(
     {
       hydrating: false,
@@ -93,19 +92,18 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   );
 
-  store.set = (...args) => {
-    set(...args);
+  effect(store, state => {
     if (!storage || persist.get().hydrating || getTransaction()) {
       return;
     }
     try {
-      const partialized = partialize(store.get());
+      const partialized = partialize(state);
       const serialized = serialize([partialized, version]);
       storage.setItem(key, serialized);
     } catch (error) {
       onError(error, "persist");
     }
-  };
+  });
 
   if (autoHydrate) {
     try {

@@ -4,6 +4,7 @@ import { create } from "../create";
 import { history, unchanged } from "./history";
 import { persist } from "./persist";
 import { transaction } from "../transaction";
+import { shallow } from "../utils";
 
 describe("history middleware", () => {
   test("adds history property to store", () => {
@@ -524,6 +525,17 @@ describe("edge cases", () => {
 
     store.set({ count: 1 });
     expect(historyListener).toHaveBeenCalled();
+  });
+
+  test("idempotent set calls don't trigger history updates", () => {
+    const store = history(create({ count: 0 }, {}, shallow));
+    expect(store.history.get().past).toEqual([]);
+    store.set({ count: 0 });
+    expect(store.history.get().past).toEqual([]);
+    store.set({ count: 0 });
+    expect(store.history.get().past).toEqual([]);
+    store.set({ count: 1 });
+    expect(store.history.get().past).toEqual([{ count: 0 }]);
   });
 });
 

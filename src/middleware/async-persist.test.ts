@@ -3,7 +3,7 @@ import { create } from "../create";
 import { persist } from "./async-persist";
 import { immer } from "./immer";
 import { transaction } from "../transaction";
-import { slice } from "../utils";
+import { shallow, slice } from "../utils";
 
 describe("async-persist middleware", () => {
   test("adds persist store to main store", () => {
@@ -899,6 +899,24 @@ describe("edge cases", () => {
     expect(store.persist.get().hydrating).toBe(false);
     expect(store.persist.get().hydrated).toBe(true);
     expect(getItem).toHaveBeenCalledTimes(1);
+  });
+
+  test("idempotent set calls don't trigger persist", async () => {
+    const storage = createMockAsyncStorage();
+    const store = persist(create({ count: 0 }, {}, shallow), {
+      storage,
+      autoHydrate: false
+    });
+
+    storage.setItem = mock(async (key, value) => {
+      await sleep(1);
+      storage.data.set(key, value);
+    });
+
+    store.set({ count: 0 });
+    await sleep(10);
+    expect(storage.setItem).toHaveBeenCalledTimes(0);
+    expect(await storage.getItem("stav/async-persist")).toEqual(null);
   });
 });
 

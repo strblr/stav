@@ -1,6 +1,7 @@
 import type { Store, State } from "../create";
 import type { Versioned } from "./persist";
 import { create } from "./object.js";
+import { effect } from "./effect.js";
 import { getTransaction } from "../transaction.js";
 import { assign, debounce } from "../utils.js";
 
@@ -52,8 +53,6 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
     }
   } = options;
 
-  const { set } = store;
-
   const persist = create(
     {
       hydrating: false,
@@ -98,10 +97,10 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
     }
   );
 
-  const debouncedPersist = debounce(async () => {
+  const debouncedPersist = debounce(async (state: T) => {
     try {
       persist.assign({ persisting: true });
-      const partialized = partialize(store.get());
+      const partialized = partialize(state);
       const serialized = serialize([partialized, version]);
       await storage?.setItem(key, serialized);
     } catch (error) {
@@ -111,13 +110,12 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
     }
   }, delay);
 
-  store.set = (...args) => {
-    set(...args);
+  effect(store, state => {
     if (!storage || persist.get().hydrating || getTransaction()) {
       return;
     }
-    debouncedPersist();
-  };
+    debouncedPersist(state);
+  });
 
   if (autoHydrate) {
     persist.hydrate();

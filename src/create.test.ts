@@ -1,6 +1,5 @@
 import { test, expect, mock, describe } from "bun:test";
 import { create } from "./create";
-import { transaction, createTransaction } from "./transaction";
 import { shallow } from "./utils";
 
 describe("create", () => {
