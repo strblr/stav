@@ -38,8 +38,15 @@ export function verbose<S extends Store<any>>(
   store.set = (...args) => {
     const id = String(counter++);
     log(onSet, "set:before", id, store.get());
-    set(...args);
-    log(onSet, "set:after", id, store.get());
+    const changed = set(...args);
+    log(
+      onSet,
+      "set:after",
+      changed ? "(changed)" : "(unchanged)",
+      id,
+      store.get()
+    );
+    return changed;
   };
 
   store.subscribe = listener => {

@@ -12,7 +12,7 @@ export interface DevtoolsStore<T> {
     nextState: StoreUpdater<T>,
     action?: string,
     data?: Record<string, any>
-  ) => void;
+  ) => boolean;
 }
 
 export interface DevtoolsOptions extends Config {
@@ -78,10 +78,11 @@ export function devtools<S extends Store<any>>(
       }
     },
     set: (nextState, action = defaultActionType, data) => {
-      set(nextState);
+      const changed = set(nextState);
       if (!getTransaction() && recording.get()) {
         connection?.send({ type: action, ...data }, store.get());
       }
+      return changed;
     }
   });
 }

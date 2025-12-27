@@ -4,7 +4,7 @@ import { assign } from "./utils.js";
 export interface Store<T> {
   get: () => T;
   getInitial: () => T;
-  set: (nextState: StoreUpdater<T>) => void;
+  set: (nextState: StoreUpdater<T>) => boolean;
   subscribe: (listener: StoreListener<T>) => () => void;
 }
 
@@ -28,9 +28,12 @@ export function create<T, H extends object = {}>(
         typeof nextState === "function"
           ? (nextState as (state: T) => T)(state)
           : nextState;
-      if (equalFn(state, nextState)) return;
+      if (equalFn(state, nextState)) {
+        return false;
+      }
       current.state = nextState;
       listeners.forEach(listener => listener(nextState, state));
+      return true;
     },
     subscribe: listener => {
       const { listeners } = getInternals(store, internals);

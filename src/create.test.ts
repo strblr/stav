@@ -95,40 +95,71 @@ describe("set", () => {
   describe("with direct value", () => {
     test("updates state with new value", () => {
       const store = create({ count: 0 });
-      store.set({ count: 1 });
+      const result = store.set({ count: 1 });
       expect(store.get()).toEqual({ count: 1 });
+      expect(result).toBe(true);
+    });
+
+    test("returns false when setting same state", () => {
+      const store = create({ count: 0 });
+      const result = store.set(store.get());
+      expect(result).toBe(false);
     });
 
     test("updates primitive state", () => {
       const store = create(0);
-      store.set(5);
+      const result = store.set(5);
       expect(store.get()).toBe(5);
+      expect(result).toBe(true);
+    });
+
+    test("returns false when setting same primitive", () => {
+      const store = create(42);
+      const result = store.set(42);
+      expect(result).toBe(false);
     });
 
     test("updates array state", () => {
       const store = create([1, 2, 3]);
-      store.set([4, 5, 6]);
+      const result = store.set([4, 5, 6]);
       expect(store.get()).toEqual([4, 5, 6]);
+      expect(result).toBe(true);
+    });
+
+    test("returns false when setting same array reference", () => {
+      const initialArray = [1, 2, 3];
+      const store = create(initialArray);
+      const result = store.set(initialArray);
+      expect(result).toBe(false);
     });
 
     test("can set state to null", () => {
       const store = create<{ count: number } | null>({ count: 0 });
-      store.set(null);
+      const result = store.set(null);
       expect(store.get()).toBe(null);
+      expect(result).toBe(true);
     });
 
     test("can set state to undefined", () => {
       const store = create<{ count: number } | undefined>({ count: 0 });
-      store.set(undefined);
+      const result = store.set(undefined);
       expect(store.get()).toBe(undefined);
+      expect(result).toBe(true);
     });
   });
 
   describe("with updater function", () => {
     test("updates state using updater function", () => {
       const store = create({ count: 0 });
-      store.set(state => ({ count: state.count + 1 }));
+      const result = store.set(state => ({ count: state.count + 1 }));
       expect(store.get()).toEqual({ count: 1 });
+      expect(result).toBe(true);
+    });
+
+    test("returns false when updater returns same state", () => {
+      const store = create({ count: 0 });
+      const result = store.set(state => state);
+      expect(result).toBe(false);
     });
 
     test("receives current state as argument", () => {
@@ -136,38 +167,43 @@ describe("set", () => {
       const updater = mock((state: { count: number }) => ({
         count: state.count * 2
       }));
-      store.set(updater);
+      const result = store.set(updater);
       expect(updater).toHaveBeenCalledWith({ count: 5 });
       expect(store.get()).toEqual({ count: 10 });
+      expect(result).toBe(true);
     });
 
     test("applies multiple updates in sequence", () => {
       const store = create(0);
-      store.set(n => n + 1);
-      store.set(n => n + 2);
-      store.set(n => n + 3);
+      const result1 = store.set(n => n + 1);
+      const result2 = store.set(n => n + 2);
+      const result3 = store.set(n => n + 3);
       expect(store.get()).toBe(6);
+      expect(result1).toBe(true);
+      expect(result2).toBe(true);
+      expect(result3).toBe(true);
     });
 
     test("can return same type or different type", () => {
       const store = create<number | string>(0);
-      store.set(n => (n as number) + 1);
+      const result1 = store.set(n => (n as number) + 1);
       expect(store.get()).toBe(1);
-      store.set(() => "hello");
+      expect(result1).toBe(true);
+      const result2 = store.set(() => "hello");
       expect(store.get()).toBe("hello");
+      expect(result2).toBe(true);
     });
   });
 
   describe("equality checking", () => {
-    test("does not trigger update when value is equal (Object.is)", () => {
+    test("does not trigger update when value is equal with default equality (Object.is)", () => {
       const store = create({ count: 0 });
       const listener = mock();
       store.subscribe(listener);
 
-      const sameState = store.get();
-      store.set(sameState);
-
+      const result = store.set(store.get());
       expect(listener).not.toHaveBeenCalled();
+      expect(result).toBe(false);
     });
 
     test("does not trigger update for NaN with default equality", () => {
@@ -175,9 +211,9 @@ describe("set", () => {
       const listener = mock();
       store.subscribe(listener);
 
-      store.set(NaN);
-
+      const result = store.set(NaN);
       expect(listener).not.toHaveBeenCalled();
+      expect(result).toBe(false);
     });
 
     test("triggers update when value is different", () => {
@@ -185,9 +221,34 @@ describe("set", () => {
       const listener = mock();
       store.subscribe(listener);
 
-      store.set({ count: 0 });
-
+      const result = store.set({ count: 0 });
       expect(listener).toHaveBeenCalledTimes(1);
+      expect(result).toBe(true);
+    });
+
+    test("returns false with custom equality when states are considered equal", () => {
+      const customEqual = (a: { count: number }, b: { count: number }) =>
+        a.count === b.count;
+      const store = create({ count: 0, other: "a" }, {}, customEqual);
+      const result = store.set({ count: 0, other: "b" });
+      expect(store.get()).toEqual({ count: 0, other: "a" });
+      expect(result).toBe(false);
+    });
+
+    test("returns true with custom equality when states are different", () => {
+      const customEqual = (a: { count: number }, b: { count: number }) =>
+        a.count === b.count;
+      const store = create({ count: 0, other: "a" }, {}, customEqual);
+      const result = store.set({ count: 1, other: "a" });
+      expect(store.get()).toEqual({ count: 1, other: "a" });
+      expect(result).toBe(true);
+    });
+
+    test("returns true with custom equality when states are considered different", () => {
+      const store = create(0, {}, () => false);
+      const result = store.set(0);
+      expect(store.get()).toBe(0);
+      expect(result).toBe(true);
     });
   });
 });

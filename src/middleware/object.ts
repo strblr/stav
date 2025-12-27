@@ -8,7 +8,7 @@ import {
 import { type Assign, assign, shallow } from "../utils.js";
 
 export interface ObjectStore<T> {
-  assign: (...nextStates: StoreUpdater<T, Partial<T>>[]) => void;
+  assign: (...nextStates: StoreUpdater<T, Partial<T>>[]) => boolean;
 }
 
 export function object<S extends Store<any>>(store: S) {
@@ -22,7 +22,7 @@ export function object<S extends Store<any>>(store: S) {
             : nextState;
         return { ...state, ...partial };
       }, store.get());
-      store.set(() => state);
+      return store.set(() => state);
     }
   });
 }

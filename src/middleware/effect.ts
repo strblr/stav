@@ -7,11 +7,9 @@ export function effect<S extends Store<any>>(
   const { set } = store;
   store.set = (...args) => {
     const previousState = store.get();
-    set(...args);
-    const state = store.get();
-    if (!Object.is(previousState, state)) {
-      effect(state, previousState);
-    }
+    const changed = set(...args);
+    changed && effect(store.get(), previousState);
+    return changed;
   };
   return store;
 }

@@ -21,6 +21,21 @@ describe("effect middleware", () => {
     store.set({ count: 5 });
     expect(store.get()).toEqual({ count: 5 });
   });
+
+  test("works with custom handlers", () => {
+    const effectFn = mock();
+    const store = effect(
+      create(
+        { count: 0 },
+        { increment: () => store.set({ count: store.get().count + 1 }) }
+      ),
+      effectFn
+    );
+
+    store.increment();
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(effectFn).toHaveBeenCalledWith({ count: 1 }, { count: 0 });
+  });
 });
 
 describe("effect execution", () => {
@@ -79,23 +94,6 @@ describe("effect execution", () => {
   });
 });
 
-describe("effect with custom handlers", () => {
-  test("works with custom handlers", () => {
-    const effectFn = mock();
-    const store = effect(
-      create(
-        { count: 0 },
-        { increment: () => store.set({ count: store.get().count + 1 }) }
-      ),
-      effectFn
-    );
-
-    store.increment();
-    expect(effectFn).toHaveBeenCalledTimes(1);
-    expect(effectFn).toHaveBeenCalledWith({ count: 1 }, { count: 0 });
-  });
-});
-
 describe("effect with different state types", () => {
   test("works with primitive state", () => {
     const effectFn = mock();
@@ -145,47 +143,44 @@ describe("effect with different state types", () => {
   });
 });
 
-describe("effect checks Object.is equality", () => {
-  test("calls effect when setting new object with same values", () => {
+describe("effect runs only when state was changed", () => {
+  test("does call effect when setting new object", () => {
     const effectFn = mock();
     const store = effect(create({ count: 0 }), effectFn);
-
     store.set({ count: 0 });
     expect(effectFn).toHaveBeenCalledTimes(1);
   });
 
-  test("does not call effect when state is unchanged with shallow equality", () => {
+  test("does not call effect when state is unchanged (same object reference)", () => {
     const effectFn = mock();
-    const initialState = { count: 0 };
-    const store = effect(create(initialState, {}, shallow), effectFn);
-
-    store.set({ count: 0 });
+    const store = effect(create({ count: 0 }), effectFn);
+    store.set(store.get());
     expect(effectFn).not.toHaveBeenCalled();
   });
 
-  test("does not call effect when setting same object reference", () => {
-    const effectFn = mock();
-    const initialState = { count: 0 };
-    const store = effect(create(initialState), effectFn);
-
-    store.set(initialState);
-    expect(effectFn).not.toHaveBeenCalled();
-  });
-
-  test("handles NaN correctly", () => {
+  test("does not call effect when state is unchanged (Object.is)", () => {
     const effectFn = mock();
     const store = effect(create(NaN), effectFn);
-
     store.set(NaN);
     expect(effectFn).not.toHaveBeenCalled();
   });
 
-  test("distinguishes +0 and -0 (Object.is behavior)", () => {
+  test("does not call effect when state is unchanged (shallow equality)", () => {
     const effectFn = mock();
-    const store = effect(create(0), effectFn);
+    const store = effect(create({ count: 0 }, {}, shallow), effectFn);
+    store.set({ count: 0 });
+    expect(effectFn).not.toHaveBeenCalled();
+  });
 
-    store.set(-0);
+  test("does call effect when state is changed (always changing)", () => {
+    const effectFn = mock();
+    const store = effect(
+      create(0, {}, () => false),
+      effectFn
+    );
+    store.set(0);
     expect(effectFn).toHaveBeenCalledTimes(1);
-    expect(effectFn).toHaveBeenCalledWith(-0, 0);
+    store.set(0);
+    expect(effectFn).toHaveBeenCalledTimes(2);
   });
 });

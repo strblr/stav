@@ -3,7 +3,7 @@ import type { Store, State } from "../create";
 import { assign } from "../utils.js";
 
 export interface ImmerStore<T> {
-  produce: (nextState: T | ImmerRecipe<T>) => void;
+  produce: (nextState: T | ImmerRecipe<T>) => boolean;
 }
 
 export interface ImmerRecipe<T> {
@@ -15,7 +15,7 @@ export function immer<S extends Store<any>>(store: S) {
     produce: nextState => {
       const updater =
         typeof nextState === "function" ? produce(nextState) : nextState;
-      store.set(updater);
+      return store.set(updater);
     }
   });
 }

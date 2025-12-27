@@ -2,7 +2,7 @@ import type { Store, State } from "../create";
 import { assign } from "../utils.js";
 
 export interface ReduxStore<A> {
-  dispatch: (action: A) => void;
+  dispatch: (action: A) => boolean;
 }
 
 export interface Reducer<T, A> {
