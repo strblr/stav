@@ -1,6 +1,5 @@
 import type { State, Store } from "../create";
 import { create } from "./object.js";
-import { effect } from "./effect.js";
 import { nocommit } from "../transaction.js";
 import { assign, createScope } from "../utils.js";
 
@@ -88,7 +87,7 @@ export function history<S extends Store<any>, D = State<S>>(
 
   assign(history, { [nocommit]: true });
 
-  effect(store, (state, previousState) => {
+  store.subscribe((state, previousState) => {
     if (!tracking.get() || !history.get().tracking) {
       return;
     }
@@ -98,7 +97,7 @@ export function history<S extends Store<any>, D = State<S>>(
       past: [delta, ...past].slice(0, limit),
       future: []
     }));
-  });
+  }, true);
 
   return assign<S, HistoryStore<D>>(store, { history });
 }

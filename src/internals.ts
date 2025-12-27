@@ -3,7 +3,7 @@ import { getTransaction, nofork, type Transaction } from "./transaction.js";
 
 export interface Internals<T> {
   state: T;
-  readonly listeners: Set<StoreListener<T>>;
+  readonly listeners: Map<StoreListener<T>, boolean>;
 }
 
 export function getInternals<T>(store: Store<T>, internals: Internals<T>) {
@@ -20,9 +20,12 @@ function upsertInternals<T>(
   }
   let fork = tx.forks.get(store);
   if (!fork) {
+    const parentInternals = upsertInternals(tx.parent, store, internals);
     fork = {
-      state: upsertInternals(tx.parent, store, internals).state,
-      listeners: new Set()
+      state: parentInternals.state,
+      listeners: new Map(
+        [...parentInternals.listeners].filter(([_, inherit]) => inherit)
+      )
     };
     tx.forks.set(store, fork);
   }

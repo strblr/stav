@@ -595,6 +595,24 @@ describe("integration", () => {
     expect(newStore.history.get().future).toHaveLength(1);
   });
 
+  test("history tracks changes in transactions", () => {
+    const store = history(create({ count: 0 }));
+
+    transaction(() => {
+      store.set({ count: 1 });
+      store.set({ count: 2 });
+      expect(store.history.get().past).toHaveLength(2);
+
+      store.history.undo();
+      expect(store.get()).toEqual({ count: 1 });
+      expect(store.history.get().past).toHaveLength(1);
+
+      store.history.redo();
+      expect(store.get()).toEqual({ count: 2 });
+      expect(store.history.get().past).toHaveLength(2);
+    });
+  });
+
   test("history store doesn't commit own changes after transaction", () => {
     const store = history(create({ count: 0 }));
 

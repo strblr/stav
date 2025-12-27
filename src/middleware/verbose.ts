@@ -42,7 +42,7 @@ export function verbose<S extends Store<any>>(
     log(onSet, "set:after", id, store.get());
   };
 
-  store.subscribe = listener => {
+  store.subscribe = (listener, inherit) => {
     const id = String(counter++);
     log(onSubscribe, "subscribe", id, listener);
     const unsubscribe = subscribe((state, previousState) => {
@@ -50,7 +50,7 @@ export function verbose<S extends Store<any>>(
       log(onListener, "listener:before", id, { state, previousState });
       listener(state, previousState);
       log(onListener, "listener:after", id);
-    });
+    }, inherit);
     return () => {
       log(onUnsubscribe, "unsubscribe", id);
       unsubscribe();

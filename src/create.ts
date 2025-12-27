@@ -5,7 +5,7 @@ export interface Store<T> {
   get: () => T;
   getInitial: () => T;
   set: (nextState: StoreUpdater<T>) => void;
-  subscribe: (listener: StoreListener<T>) => () => void;
+  subscribe: (listener: StoreListener<T>, inherit?: boolean) => () => void;
 }
 
 export function create<T, H extends object = {}>(
@@ -15,7 +15,7 @@ export function create<T, H extends object = {}>(
 ) {
   const internals: Internals<T> = {
     state: initialState,
-    listeners: new Set()
+    listeners: new Map()
   };
 
   const store: Store<T> = {
@@ -30,11 +30,13 @@ export function create<T, H extends object = {}>(
           : nextState;
       if (equalFn(state, nextState)) return;
       current.state = nextState;
-      listeners.forEach(listener => listener(nextState, state));
+      for (const listener of listeners.keys()) {
+        listener(nextState, state);
+      }
     },
-    subscribe: listener => {
+    subscribe: (listener, inherit = false) => {
       const { listeners } = getInternals(store, internals);
-      listeners.add(listener);
+      listeners.set(listener, inherit);
       return () => {
         listeners.delete(listener);
       };
