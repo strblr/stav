@@ -69,7 +69,7 @@ describe("transaction", () => {
     expect(store2.get()).toEqual({ value: "c" });
   });
 
-  test("store outside transaction not affected", () => {
+  test("other stores outside transaction not affected", () => {
     const store1 = create({ count: 0 });
     const store2 = create({ count: 100 });
     const listener2 = mock();
@@ -165,7 +165,7 @@ describe("createTransaction", () => {
     expect(store.get()).toEqual({ count: 2 });
   });
 
-  test("transaction does not trigger listeners until commit", () => {
+  test("transaction does not trigger listeners until commit by default", () => {
     const store = create({ count: 0 });
     const listener = mock();
     store.subscribe(listener);
@@ -324,7 +324,41 @@ describe("nested transactions", () => {
     expect(store.get()).toEqual({ count: 0 });
   });
 
-  test("listener isolation between main scope and transaction", () => {
+  test("async nested transactions commit independently", async () => {
+    const store = create({ count: 0 });
+    const listener = mock();
+    store.subscribe(listener);
+
+    await transaction(async act => {
+      await Promise.resolve();
+      act(() => store.set({ count: 1 }));
+
+      await act(() =>
+        transaction(async act => {
+          await Promise.resolve();
+          act(() => {
+            expect(store.get()).toEqual({ count: 1 });
+            store.set({ count: 2 });
+          });
+          await Promise.resolve();
+        })
+      );
+
+      act(() => {
+        expect(store.get()).toEqual({ count: 2 });
+        store.set({ count: 3 });
+      });
+      await Promise.resolve();
+    });
+
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith({ count: 3 }, { count: 0 });
+    expect(store.get()).toEqual({ count: 3 });
+  });
+});
+
+describe("edge cases", () => {
+  test("listener isolation by default between main scope and transaction", () => {
     const store = create({ count: 0 });
     const mainScopeListener = mock();
     const transactionListener = mock();
@@ -345,6 +379,57 @@ describe("nested transactions", () => {
 
     expect(mainScopeListener).toHaveBeenCalledTimes(2);
     expect(transactionListener).toHaveBeenCalledTimes(2);
+  });
+
+  test("listener inheritance with inherit flag", () => {
+    const store = create({ count: 0 });
+    const nonInheritedListener = mock();
+    const inheritedListener = mock();
+    const transactionListener = mock();
+
+    store.subscribe(nonInheritedListener, false);
+    store.subscribe(inheritedListener, true);
+
+    transaction(() => {
+      store.subscribe(transactionListener);
+      store.set({ count: 1 });
+      expect(nonInheritedListener).not.toHaveBeenCalled();
+      expect(inheritedListener).toHaveBeenCalledTimes(1);
+      expect(inheritedListener).toHaveBeenCalledWith(
+        { count: 1 },
+        { count: 0 }
+      );
+      expect(transactionListener).toHaveBeenCalledTimes(1);
+      expect(transactionListener).toHaveBeenCalledWith(
+        { count: 1 },
+        { count: 0 }
+      );
+
+      store.set({ count: 2 });
+      expect(nonInheritedListener).not.toHaveBeenCalled();
+      expect(inheritedListener).toHaveBeenCalledTimes(2);
+      expect(inheritedListener).toHaveBeenLastCalledWith(
+        { count: 2 },
+        { count: 1 }
+      );
+      expect(transactionListener).toHaveBeenCalledTimes(2);
+      expect(transactionListener).toHaveBeenLastCalledWith(
+        { count: 2 },
+        { count: 1 }
+      );
+    });
+
+    expect(nonInheritedListener).toHaveBeenCalledTimes(1);
+    expect(nonInheritedListener).toHaveBeenCalledWith(
+      { count: 2 },
+      { count: 0 }
+    );
+
+    expect(inheritedListener).toHaveBeenCalledTimes(3);
+    expect(inheritedListener).toHaveBeenLastCalledWith(
+      { count: 2 },
+      { count: 0 }
+    );
   });
 
   test("transactions can be committed multiple times", () => {
@@ -388,37 +473,5 @@ describe("nested transactions", () => {
 
     expect(listener).toHaveBeenCalledTimes(2);
     expect(store.get()).toEqual({ count: 2 });
-  });
-
-  test("async nested transactions commit independently", async () => {
-    const store = create({ count: 0 });
-    const listener = mock();
-    store.subscribe(listener);
-
-    await transaction(async act => {
-      await Promise.resolve();
-      act(() => store.set({ count: 1 }));
-
-      await act(() =>
-        transaction(async act => {
-          await Promise.resolve();
-          act(() => {
-            expect(store.get()).toEqual({ count: 1 });
-            store.set({ count: 2 });
-          });
-          await Promise.resolve();
-        })
-      );
-
-      act(() => {
-        expect(store.get()).toEqual({ count: 2 });
-        store.set({ count: 3 });
-      });
-      await Promise.resolve();
-    });
-
-    expect(listener).toHaveBeenCalledTimes(1);
-    expect(listener).toHaveBeenCalledWith({ count: 3 }, { count: 0 });
-    expect(store.get()).toEqual({ count: 3 });
   });
 });
