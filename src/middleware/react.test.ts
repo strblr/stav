@@ -1,7 +1,9 @@
 import { test, expect, mock, describe } from "bun:test";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { create } from "../create";
-import { react, useStore } from "./react";
+import { react, useStore, useHydration } from "./react";
+import { persist } from "./persist";
+import { persist as asyncPersist } from "./async-persist";
 import { shallow } from "../utils";
 
 describe("react middleware", () => {
@@ -490,3 +492,260 @@ describe("edge cases", () => {
     expect(renderSpy).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("useHydration hook", () => {
+  test("returns true when store is already hydrated", () => {
+    const storage = createMockStorage();
+    const store = persist(create({ count: 0 }), { storage });
+    const { result } = renderHook(() => useHydration([store]));
+    expect(result.current).toBe(true);
+  });
+
+  test("returns false initially when autoHydrate is disabled", async () => {
+    const storage = createMockStorage();
+    const store = persist(create({ count: 0 }), {
+      storage,
+      autoHydrate: false
+    });
+
+    const { result } = renderHook(() => useHydration([store]));
+    expect(result.current).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+      expect(store.persist.get().hydrated).toBe(true);
+    });
+  });
+
+  test("returns true after hydration completes", async () => {
+    const storage = createMockStorage();
+    storage.setItem("stav/persist", JSON.stringify([{ count: 10 }, 1]));
+    const store = persist(create({ count: 0 }), {
+      storage,
+      autoHydrate: false
+    });
+
+    const { result } = renderHook(() => useHydration([store]));
+    expect(result.current).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  test("works with multiple stores - all hydrated", () => {
+    const storage1 = createMockStorage();
+    const storage2 = createMockStorage();
+    const store1 = persist(create({ count: 0 }), {
+      storage: storage1,
+      key: "store1"
+    });
+    const store2 = persist(create({ value: "a" }), {
+      storage: storage2,
+      key: "store2"
+    });
+
+    const { result } = renderHook(() => useHydration([store1, store2]));
+    expect(result.current).toBe(true);
+  });
+
+  test("works with multiple stores - one not hydrated", async () => {
+    const storage1 = createMockStorage();
+    const storage2 = createMockStorage();
+    const store1 = persist(create({ count: 0 }), {
+      storage: storage1,
+      key: "store1"
+    });
+    const store2 = persist(create({ value: "a" }), {
+      storage: storage2,
+      key: "store2",
+      autoHydrate: false
+    });
+
+    const { result } = renderHook(() => useHydration([store1, store2]));
+    expect(result.current).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+      expect(store2.persist.get().hydrated).toBe(true);
+    });
+  });
+
+  test("works with multiple stores - all not hydrated", async () => {
+    const storage1 = createMockStorage();
+    const storage2 = createMockStorage();
+    storage1.setItem("store1", JSON.stringify([{ count: 5 }, 1]));
+    storage2.setItem("store2", JSON.stringify([{ value: "b" }, 1]));
+
+    const store1 = persist(create({ count: 0 }), {
+      storage: storage1,
+      key: "store1",
+      autoHydrate: false
+    });
+    const store2 = persist(create({ value: "a" }), {
+      storage: storage2,
+      key: "store2",
+      autoHydrate: false
+    });
+
+    const { result } = renderHook(() => useHydration([store1, store2]));
+    expect(result.current).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+      expect(store1.persist.get().hydrated).toBe(true);
+      expect(store2.persist.get().hydrated).toBe(true);
+    });
+  });
+
+  test("works with async persist stores", async () => {
+    const storage = createMockAsyncStorage();
+    await storage.setItem("stav/async-persist", [{ count: 10 }, 1]);
+
+    const store = asyncPersist(create({ count: 0 }), {
+      storage,
+      autoHydrate: false
+    });
+    expect(store.persist.get().hydrating).toBe(false);
+
+    const { result } = renderHook(() => useHydration([store]));
+    expect(result.current).toBe(false);
+    expect(store.persist.get().hydrating).toBe(true);
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+      expect(store.persist.get().hydrated).toBe(true);
+    });
+  });
+
+  test("works with hydrating async persist store", async () => {
+    const storage = createMockAsyncStorage();
+    await storage.setItem("stav/async-persist", [{ count: 10 }, 1]);
+    const store = asyncPersist(create({ count: 0 }), {
+      storage
+    });
+    expect(store.persist.get().hydrating).toBe(true);
+
+    const { result } = renderHook(() => useHydration([store]));
+
+    expect(store.persist.get().hydrated).toBe(false);
+    expect(store.persist.get().hydrating).toBe(true);
+    expect(result.current).toBe(false);
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+      expect(store.persist.get().hydrated).toBe(true);
+      expect(store.persist.get().hydrating).toBe(false);
+    });
+  });
+
+  test("works with hydrated async persist store", async () => {
+    const storage = createMockAsyncStorage();
+    await storage.setItem("stav/async-persist", [{ count: 10 }, 1]);
+    const store = asyncPersist(create({ count: 0 }), {
+      storage,
+      autoHydrate: false
+    });
+    await store.persist.hydrate();
+
+    const { result } = renderHook(() => useHydration([store]));
+    expect(result.current).toBe(true);
+  });
+
+  test("works with mixed sync and async persist stores", async () => {
+    const syncStorage = createMockStorage();
+    syncStorage.setItem("sync-store", JSON.stringify([{ count: 5 }, 1]));
+    const asyncStorage = createMockAsyncStorage();
+    await asyncStorage.setItem("async-store", [{ value: "test" }, 1]);
+
+    const syncStore = persist(create({ count: 0 }), {
+      storage: syncStorage,
+      key: "sync-store",
+      autoHydrate: false
+    });
+    const asyncStore = asyncPersist(create({ value: "a" }), {
+      storage: asyncStorage,
+      key: "async-store",
+      autoHydrate: false
+    });
+
+    const { result } = renderHook(() => useHydration([syncStore, asyncStore]));
+    expect(result.current).toBe(false);
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+      expect(syncStore.persist.get().hydrated).toBe(true);
+      expect(asyncStore.persist.get().hydrated).toBe(true);
+    });
+  });
+
+  test("handles empty stores array", () => {
+    const { result } = renderHook(() => useHydration([]));
+    expect(result.current).toBe(true);
+  });
+
+  test("only triggers hydration once per store", async () => {
+    const storage = createMockStorage();
+    storage.setItem("stav/persist", JSON.stringify([{ count: 10 }, 1]));
+    const store = persist(create({ count: 0 }), {
+      storage,
+      autoHydrate: false
+    });
+
+    const hydrateSpy = mock(store.persist.hydrate);
+    store.persist.hydrate = hydrateSpy;
+
+    const { rerender } = renderHook(() => useHydration([store]));
+
+    await waitFor(() => {
+      expect(hydrateSpy).toHaveBeenCalledTimes(1);
+    });
+
+    rerender();
+    await sleep(5);
+    expect(hydrateSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test("does not trigger hydration for already hydrated stores", async () => {
+    const storage = createMockStorage();
+    const store = persist(create({ count: 0 }), { storage });
+
+    const hydrateSpy = mock(store.persist.hydrate);
+    store.persist.hydrate = hydrateSpy;
+
+    renderHook(() => useHydration([store]));
+    await sleep(5);
+    expect(hydrateSpy).not.toHaveBeenCalled();
+  });
+});
+
+// Utils
+
+function createMockStorage<T = string>() {
+  const data = new Map<string, T>();
+  return {
+    data,
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: T) => {
+      data.set(key, value);
+    }
+  };
+}
+
+function createMockAsyncStorage<T = any>() {
+  const data = new Map<string, T>();
+  return {
+    data,
+    getItem: async (key: string) => {
+      await sleep(1);
+      return data.get(key) ?? null;
+    },
+    setItem: async (key: string, value: T) => {
+      await sleep(1);
+      data.set(key, value);
+    }
+  };
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}

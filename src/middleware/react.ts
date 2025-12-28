@@ -1,5 +1,13 @@
-import { useSyncExternalStore, useDebugValue, useRef } from "react";
+import {
+  useSyncExternalStore,
+  useDebugValue,
+  useRef,
+  useEffect,
+  useState
+} from "react";
 import type { Store, EqualFn, State } from "../create";
+import type { PersistStore } from "./persist";
+import type { AsyncPersistStore } from "./async-persist";
 import { assign } from "../utils.js";
 
 export interface ReactStore<T> {
@@ -43,6 +51,33 @@ export function useStore<T, U = T>(
 
   useDebugValue(slice);
   return slice;
+}
+
+// useHydration
+
+export function useHydration(stores: (PersistStore | AsyncPersistStore)[]) {
+  const [hydrated, setHydrated] = useState(() =>
+    stores.every(store => store.persist.get().hydrated)
+  );
+
+  useEffect(() => {
+    const promise = stores
+      .filter(store => !store.persist.get().hydrated)
+      .map(store => {
+        const promise = new Promise<void>(resolve => {
+          const unsubscribe = store.persist.subscribe(state => {
+            if (!state.hydrated) return;
+            unsubscribe();
+            resolve();
+          });
+          store.persist.hydrate();
+        });
+        return promise;
+      });
+    Promise.all(promise).then(() => setHydrated(true));
+  }, stores);
+
+  return hydrated;
 }
 
 // Utils
