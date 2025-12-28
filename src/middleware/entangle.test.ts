@@ -6,7 +6,7 @@ import { object } from "./object";
 import { transaction } from "../transaction";
 
 describe("entangle", () => {
-  test("returns the original store", () => {
+  test("returns the original store with untangle method", () => {
     const storeA = create(0);
     const storeB = create(0);
 
@@ -16,7 +16,10 @@ describe("entangle", () => {
       set: state => state
     });
 
-    expect(result).toBe(storeA);
+    expect(result.get).toBe(storeA.get);
+    expect(result.set).toBe(storeA.set);
+    expect(result.subscribe).toBe(storeA.subscribe);
+    expect(result.untangle).toBeFunction();
   });
 
   test("preserves store functionality after entangle", () => {
@@ -33,6 +36,7 @@ describe("entangle", () => {
     expect(result.set).toBeFunction();
     expect(result.subscribe).toBeFunction();
     expect(result.getInitial).toBeFunction();
+    expect(result.untangle).toBeFunction();
   });
 
   test("syncs on setup", () => {
@@ -272,6 +276,77 @@ describe("entangle", () => {
 
     storeB.set(state => state * 2);
     expect(storeA.get()).toBe(10);
+  });
+
+  test("untangle stops synchronization between stores", () => {
+    const storeA = create(0);
+    const storeB = create(0);
+
+    const entangled = entangle(storeA, {
+      with: storeB,
+      get: pairedState => pairedState,
+      set: state => state
+    });
+
+    storeA.set(5);
+    expect(storeB.get()).toBe(5);
+
+    storeB.set(10);
+    expect(storeA.get()).toBe(10);
+
+    entangled.untangle();
+
+    storeA.set(20);
+    expect(storeB.get()).toBe(10);
+
+    storeB.set(30);
+    expect(storeA.get()).toBe(20);
+  });
+
+  test("untangle prevents listeners from being called", () => {
+    const storeA = create(0);
+    const storeB = create(0);
+    const listenerA = mock();
+    const listenerB = mock();
+
+    storeA.subscribe(listenerA);
+    storeB.subscribe(listenerB);
+
+    const entangled = entangle(storeA, {
+      with: storeB,
+      get: pairedState => pairedState,
+      set: state => state
+    });
+
+    listenerA.mockClear();
+    listenerB.mockClear();
+
+    entangled.untangle();
+
+    storeA.set(5);
+    expect(listenerA).toHaveBeenCalledTimes(1);
+    expect(listenerB).toHaveBeenCalledTimes(0);
+
+    storeB.set(10);
+    expect(listenerA).toHaveBeenCalledTimes(1);
+    expect(listenerB).toHaveBeenCalledTimes(1);
+  });
+
+  test("untangle can be called multiple times safely", () => {
+    const storeA = create(0);
+    const storeB = create(0);
+
+    const entangled = entangle(storeA, {
+      with: storeB,
+      get: pairedState => pairedState,
+      set: state => state
+    });
+
+    entangled.untangle();
+    expect(() => entangled.untangle()).not.toThrow();
+
+    storeA.set(5);
+    expect(storeB.get()).toBe(0);
   });
 });
 

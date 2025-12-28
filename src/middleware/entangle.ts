@@ -1,5 +1,9 @@
 import type { State, Store } from "../create";
-import { createScope } from "../utils.js";
+import { assign, createScope } from "../utils.js";
+
+export interface EntangleStore {
+  untangle: () => void;
+}
 
 export interface EntangleOptions<S extends Store<any>, S2 extends Store<any>> {
   with: S2;
@@ -24,13 +28,18 @@ export function entangle<S extends Store<any>, S2 extends Store<any>>(
 
   syncIn();
 
-  pairedStore.subscribe(() => {
+  const unsubscribeIn = pairedStore.subscribe(() => {
     !syncing.get() && syncing.act(true, syncIn);
   }, true);
 
-  store.subscribe(() => {
+  const unsubscribeOut = store.subscribe(() => {
     !syncing.get() && syncing.act(true, syncOut);
   }, true);
 
-  return store;
+  return assign<S, EntangleStore>(store, {
+    untangle: () => {
+      unsubscribeIn();
+      unsubscribeOut();
+    }
+  });
 }
