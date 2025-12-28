@@ -1,19 +1,9 @@
-import { test, expect, mock, describe, beforeEach, afterEach } from "bun:test";
+import { test, expect, mock, describe } from "bun:test";
 import { create } from "../create";
 import { entangle, derive } from "./entangle";
 import { array } from "./array";
 import { object } from "./object";
 import { transaction } from "../transaction";
-
-const consoleWarn = console.warn;
-
-beforeEach(() => {
-  console.warn = mock();
-});
-
-afterEach(() => {
-  console.warn = consoleWarn;
-});
 
 describe("entangle", () => {
   test("returns the original store with untangle method", () => {
@@ -388,19 +378,18 @@ describe("derive", () => {
     expect(derived.get()).toBe(60);
   });
 
-  test("creates a read-only derived store", () => {
+  test("creates a unidirectional derived store", () => {
     const source = create(5);
     const derived = derive(source, {
-      get: value => value * 3
+      get: value => value
     });
 
-    expect(derived.get()).toBe(15);
+    expect(derived.get()).toBe(5);
 
     derived.set(6);
     expect(source.get()).toBe(5);
-    expect(console.warn).toHaveBeenCalled();
     source.set(15);
-    expect(derived.get()).toBe(45);
+    expect(derived.get()).toBe(15);
   });
 
   test("derived store has untangle method", () => {

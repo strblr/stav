@@ -7,7 +7,7 @@ export interface EntangleStore {
 
 export interface EntangleOptions<S extends Store<any>, S2 extends Store<any>> {
   with: S2;
-  get: (sourceState: State<S2>, state: State<S>) => State<S>;
+  get?: (sourceState: State<S2>, state: State<S>) => State<S>;
   set?: (state: State<S>, sourceState: State<S2>) => State<S2>;
 }
 
@@ -16,30 +16,25 @@ export function entangle<S extends Store<any>, S2 extends Store<any>>(
   options: EntangleOptions<S, S2>
 ) {
   const { with: sourceStore, get, set } = options;
-  const { set: storeSet } = store;
   const syncing = createScope(false);
   const unsubscribes: (() => void)[] = [];
 
-  const hydrate = () => {
-    storeSet(() => get(sourceStore.get(), store.get()));
-  };
-
-  hydrate();
-
-  unsubscribes.push(
-    sourceStore.subscribe(() => {
-      if (syncing.get()) return;
-      syncing.act(true, hydrate);
-    }, true)
-  );
-
-  if (!set) {
-    store.set = () => {
-      console.warn(
-        "[stav/entangle] Calling set on a read-only derived store is a no-op, provide a set option to make it writable"
-      );
+  if (get) {
+    const hydrate = () => {
+      store.set(() => get(sourceStore.get(), store.get()));
     };
-  } else {
+
+    hydrate();
+
+    unsubscribes.push(
+      sourceStore.subscribe(() => {
+        if (syncing.get()) return;
+        syncing.act(true, hydrate);
+      }, true)
+    );
+  }
+
+  if (set) {
     unsubscribes.push(
       store.subscribe(state => {
         if (syncing.get()) return;
