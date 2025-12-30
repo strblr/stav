@@ -1,7 +1,6 @@
 import "@redux-devtools/extension";
 import type { Config } from "@redux-devtools/extension";
 import type { State, Store, StoreUpdater } from "../create.js";
-import { getTransaction } from "../transaction.js";
 import { type Assign, assign, createScope } from "../utils.js";
 
 export interface DevtoolsStore<T> {
@@ -30,6 +29,10 @@ export function devtools<S extends Store<any>>(
 ): Assign<S, DevtoolsStore<State<S>>> {
   const connection = connect(options, enabled);
   const recording = createScope(true);
+  const metadata = createScope<{
+    action?: string;
+    data?: Record<string, any>;
+  }>({});
   const { set } = store;
 
   connection?.init(store.get());
@@ -70,18 +73,22 @@ export function devtools<S extends Store<any>>(
     }
   });
 
+  const unsubscribe = store.subscribe(state => {
+    if (!recording.get()) return;
+    const { action = defaultActionType, data } = metadata.get();
+    connection?.send({ type: action, ...data }, state);
+  });
+
   return assign<S, DevtoolsStore<State<S>>>(store, {
     devtools: {
       cleanup: () => {
         recording.set(false);
+        unsubscribe();
         connection?.unsubscribe?.();
       }
     },
     set: (nextState, action = defaultActionType, data) => {
-      set(nextState);
-      if (!getTransaction() && recording.get()) {
-        connection?.send({ type: action, ...data }, store.get());
-      }
+      metadata.act({ action, data }, () => set(nextState));
     }
   });
 }
