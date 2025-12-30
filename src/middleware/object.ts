@@ -30,13 +30,13 @@ export function object<S extends Store<any>>(
 
 // create
 
-export function create<T, H extends object = {}>(
+export function create<T extends object, H extends object = {}>(
   initialState: T,
   handlers?: H,
   equalFn: EqualFn<T> = shallow
 ) {
   const store = vanilla(initialState, handlers, equalFn);
-  return object(store as any) as Assign<typeof store, ObjectStore<T>>;
+  return object(store as any) as Assign<Assign<Store<T>, H>, ObjectStore<T>>;
 }
 
 // Utils
