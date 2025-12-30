@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@import "nextra-theme-docs/style.css";
+
+@variant dark (&:where(.dark *));
+
+@layer base {
+  pre {
+    @apply bg-gray-50! dark:bg-[#0e0e0f]!;
+  }
+
+  .twoslash-popup-container pre {
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .twoslash-popup-container pre .nextra-code span {
+    background-color: transparent !important;
+  }
+}

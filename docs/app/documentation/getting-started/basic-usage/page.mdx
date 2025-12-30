@@ -1,0 +1,200 @@
+## Installation
+
+```sh npm2yarn
+npm install stav
+```
+
+## Creating a store
+
+At its core, stav is really just a `create` function. You pass it an initial value, it returns a store:
+
+```ts twoslash
+import { create } from "stav";
+
+const store = create({ count: 0 });
+```
+
+We're passing an object here but you can pass _anything_: arrays, maps, primitives, even functions. The store gives you control over your state with four methods:
+
+```ts twoslash
+// @noErrors
+import { create } from "stav";
+
+const store = create({ count: 0 });
+// ---cut---
+store.
+//    ^|
+‎
+‎
+‎
+‎
+‎
+```
+
+- **`get`** - Get the current state
+- **`getInitial`** - Get the initial state
+- **`set`** - Update the state
+- **`subscribe`** - Listen to state changes
+
+## Usage
+
+Stav works exactly as you'd expect, no unsolicited magic or fancy patterns:
+
+```ts twoslash
+// @noErrors
+import { create } from "stav";
+
+const store = create({ count: 0 });
+// ---cut---
+const value = store.get();
+//    ^?
+
+‎
+‎
+‎
+‎
+‎
+
+// @log: store set to { count: 1 }
+store.set({ count: 1 });
+
+// @log: store set to { count: 2 }
+store.set(state => ({ count: state.count + 1 }));
+
+const unsubscribe = store.subscribe((state, previous) => {
+  console.log("Changed from", previous.count, "to", state.count);
+});
+
+// @log: logs "Changed from 2 to 0"
+store.set(store.getInitial());
+
+unsubscribe();
+```
+
+## Handlers
+
+Custom handlers are simply additional, first-class store methods. You can add them for about any purpose, but usually to update the state. Simply pass a second argument to `create`:
+
+```ts twoslash
+// @noErrors
+import { create } from "stav";
+// ---cut---
+const store = create(
+  { count: 0 },
+  {
+    getDouble: () => store.get().count * 2,
+    increment: () => store.set(state => ({ count: state.count + 1 })),
+    decrement: () => store.set(state => ({ count: state.count - 1 }))
+  }
+);
+
+// @log: store set to { count: 1 }
+store.increment();
+
+// @log: logs "2"
+console.log(store.getDouble());
+
+// @log: store set to { count: 0 }
+store.decrement();
+
+store.
+//    ^|
+‎
+‎
+‎
+‎
+‎
+‎
+‎
+‎
+```
+
+## Equality function
+
+`create` accepts an optional third argument, an equality function. Every time `set()` is called, the equality function is called with the current state and the next state. If it returns `true` (equal), the state is not updated and the listeners are not notified. If it returns `false` (not equal), the reverse happens. Defaults to `Object.is`.
+
+```ts twoslash
+// @noErrors
+import { create, shallow } from "stav";
+//               ^^^^^^^
+
+const store = create(
+  { user: "Alice", todos: [] },
+  {
+    setUser: (user: string) => store.set(state => ({ ...state, user })),
+    setTodos: (todos: string[]) => store.set(state => ({ ...state, todos }))
+  },
+  shallow
+//^^^^^^^
+);
+‎
+store.subscribe(() => console.log("State changed"));
+
+// @log: Nothing happens
+store.setUser("Alice");
+
+// @log: logs "State changed"
+store.setUser("Bob");
+```
+
+Stav comes with two equality function utilities: `shallow` and `deep`. You can also pass your own.
+
+Read more about utility functions: [Utilities](/documentation/utilities)
+
+## React Integration
+
+To consume stores in React components, the easiest way is to use the `react` middleware. Middlewares can add additional properties to stores. In this case, the `react` middleware adds a `use` hook:
+
+```tsx twoslash
+// @noErrors
+import React from "react";
+// ---cut---
+import { create } from "stav";
+import { react } from "stav/react";
+
+const store = react(
+  create(
+    { count: 0 },
+    {
+      increment: () => store.set(state => ({ count: state.count + 1 })),
+      decrement: () => store.set(state => ({ count: state.count - 1 }))
+    }
+  )
+);
+
+function Counter() {
+  const count = store.use(state => state.count);
+  //    ^?
+  ‎
+
+  return (
+    <button onClick={store.increment}>
+      Increment {count}
+    </button>
+  );
+}
+```
+
+The hook can be called with or without a selector, and optionally with an equality function (defaults to `Object.is`).
+
+Read more: [Usage with react](/documentation/getting-started/usage-with-react)
+
+## Middlewares
+
+Blabla
+
+## Live Demo
+
+Here's a complete working example of a counter with multiple features:
+
+> [!NOTE]
+>
+> This demo shows how stav handles state updates instantly and efficiently. Try clicking the buttons to see the state update in real-time!
+
+## Next Steps
+
+Now that you understand the basics, explore more advanced features:
+
+- **[Middlewares](/documentation/middlewares)** - Extend your stores with persistence, devtools, and more
+- **[Guides](/documentation/guides)** - Learn patterns like slices and advanced state management
+- **[Utilities](/documentation/utilities)** - Discover helper functions for common tasks
