@@ -1,6 +1,6 @@
 import "@redux-devtools/extension";
 import type { Config } from "@redux-devtools/extension";
-import type { State, Store, StoreUpdater } from "../create";
+import type { State, Store, StoreUpdater } from "../create.js";
 import { getTransaction } from "../transaction.js";
 import { type Assign, assign, createScope } from "../utils.js";
 

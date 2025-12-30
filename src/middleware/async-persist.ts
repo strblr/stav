@@ -1,5 +1,5 @@
-import type { Store, State } from "../create";
-import type { Versioned } from "./persist";
+import type { Store, State } from "../create.js";
+import type { Versioned } from "./persist.js";
 import { create } from "./object.js";
 import { getTransaction, nofork } from "../transaction.js";
 import { type Assign, assign, debounce } from "../utils.js";

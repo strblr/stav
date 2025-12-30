@@ -5,9 +5,9 @@ import {
   useEffect,
   useState
 } from "react";
-import type { Store, EqualFn, State } from "../create";
-import type { PersistStore } from "./persist";
-import type { AsyncPersistStore } from "./async-persist";
+import type { Store, EqualFn, State } from "../create.js";
+import type { PersistStore } from "./persist.js";
+import type { AsyncPersistStore } from "./async-persist.js";
 import { type Assign, assign } from "../utils.js";
 
 export interface ReactStore<T> {

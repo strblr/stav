@@ -1,4 +1,4 @@
-import type { Store, State } from "../create";
+import type { Store, State } from "../create.js";
 import { create } from "./object.js";
 import { getTransaction, nofork } from "../transaction.js";
 import { type Assign, assign } from "../utils.js";

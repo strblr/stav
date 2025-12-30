@@ -1,4 +1,4 @@
-import type { StoreListener, EqualFn } from "./create";
+import type { StoreListener, EqualFn } from "./create.js";
 
 // assign
 

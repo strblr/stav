@@ -1,4 +1,4 @@
-import type { Store, State } from "../create";
+import type { Store, State } from "../create.js";
 import { type Assign, assign } from "../utils.js";
 
 export interface ReduxStore<A> {

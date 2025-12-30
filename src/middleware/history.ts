@@ -1,4 +1,4 @@
-import type { State, Store } from "../create";
+import type { State, Store } from "../create.js";
 import { create } from "./object.js";
 import { nocommit } from "../transaction.js";
 import { type Assign, assign, createScope } from "../utils.js";

@@ -1,4 +1,4 @@
-import type { Store, StoreListener } from "./create";
+import type { Store, StoreListener } from "./create.js";
 import { getTransaction, nofork, type Transaction } from "./transaction.js";
 
 export interface Internals<T> {

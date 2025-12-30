@@ -1,5 +1,5 @@
 import { produce, type Draft, type nothing } from "immer";
-import type { Store, State } from "../create";
+import type { Store, State } from "../create.js";
 import { type Assign, assign } from "../utils.js";
 
 export interface ImmerStore<T> {

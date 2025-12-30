@@ -1,4 +1,4 @@
-import type { Store } from "../create";
+import type { Store } from "../create.js";
 
 export interface SSRSafeOptions {
   isSSR?: boolean;

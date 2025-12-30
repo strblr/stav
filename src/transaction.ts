@@ -1,5 +1,5 @@
-import type { Store } from "./create";
-import type { Internals } from "./internals";
+import type { Store } from "./create.js";
+import type { Internals } from "./internals.js";
 import { createScope } from "./utils.js";
 
 export interface Transaction {

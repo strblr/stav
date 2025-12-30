@@ -1,5 +1,5 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { State, Store } from "../create";
+import type { State, Store } from "../create.js";
 
 export interface PreprocessOptions<T> {
   transform?: (state: T) => T;

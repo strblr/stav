@@ -1,4 +1,4 @@
-import type { State, Store } from "../create";
+import type { State, Store } from "../create.js";
 import { type Assign, assign } from "../utils.js";
 
 export interface ArrayStore<T> {
