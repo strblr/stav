@@ -1,5 +1,5 @@
 import type { State, Store } from "../create";
-import { assign } from "../utils.js";
+import { type Assign, assign } from "../utils.js";
 
 export interface ArrayStore<T> {
   push: (...items: T[]) => void;
@@ -16,7 +16,9 @@ export interface ArrayStore<T> {
   ) => void;
 }
 
-export function array<S extends Store<any[]>>(store: S) {
+export function array<S extends Store<any[]>>(
+  store: S
+): Assign<S, ArrayStore<State<S>[number]>> {
   type T = State<S>[number];
 
   return assign<S, ArrayStore<T>>(store, {

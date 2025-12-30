@@ -8,13 +8,15 @@ import {
 import type { Store, EqualFn, State } from "../create";
 import type { PersistStore } from "./persist";
 import type { AsyncPersistStore } from "./async-persist";
-import { assign } from "../utils.js";
+import { type Assign, assign } from "../utils.js";
 
 export interface ReactStore<T> {
   use: <U = T>(selector?: (state: T) => U, equalFn?: EqualFn<U>) => U;
 }
 
-export function react<S extends Store<any>>(store: S) {
+export function react<S extends Store<any>>(
+  store: S
+): Assign<S, ReactStore<State<S>>> {
   return assign<S, ReactStore<State<S>>>(store, {
     use: (...args) => useStore(store, ...args)
   });

@@ -1,7 +1,7 @@
 import type { State, Store } from "../create";
 import { create } from "./object.js";
 import { nocommit } from "../transaction.js";
-import { assign, createScope } from "../utils.js";
+import { type Assign, assign, createScope } from "../utils.js";
 
 export interface HistoryStore<D> {
   history: ReturnType<
@@ -31,7 +31,7 @@ export interface HistoryOptions<T, D = T> {
 export function history<S extends Store<any>, D = State<S>>(
   store: S,
   options: HistoryOptions<State<S>, D> = {}
-) {
+): Assign<S, HistoryStore<D>> {
   const {
     limit = Infinity,
     diff = (_, targetState) => targetState as D,

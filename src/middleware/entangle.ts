@@ -1,5 +1,5 @@
 import { create, EqualFn, type State, type Store } from "../create.js";
-import { assign, createScope } from "../utils.js";
+import { type Assign, assign, createScope } from "../utils.js";
 
 export interface EntangleStore {
   untangle: () => void;
@@ -14,7 +14,7 @@ export interface EntangleOptions<S extends Store<any>, S2 extends Store<any>> {
 export function entangle<S extends Store<any>, S2 extends Store<any>>(
   store: S,
   options: EntangleOptions<S, S2>
-) {
+): Assign<S, EntangleStore> {
   const { with: sourceStore, get, set } = options;
   const syncing = createScope(false);
   const unsubscribes: (() => void)[] = [];

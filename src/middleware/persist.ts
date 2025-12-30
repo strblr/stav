@@ -1,7 +1,7 @@
 import type { Store, State } from "../create";
 import { create } from "./object.js";
 import { getTransaction, nofork } from "../transaction.js";
-import { assign } from "../utils.js";
+import { type Assign, assign } from "../utils.js";
 
 export interface PersistStore {
   persist: ReturnType<
@@ -28,7 +28,7 @@ export interface PersistOptions<T, P, R> {
 export function persist<S extends Store<any>, P = State<S>, R = string>(
   store: S,
   options: PersistOptions<State<S>, P, R> = {}
-) {
+): Assign<S, PersistStore> {
   type T = State<S>;
   type Default<O extends keyof PersistOptions<T, P, R>> = NonNullable<
     PersistOptions<T, P, R>[O]

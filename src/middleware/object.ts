@@ -2,16 +2,17 @@ import {
   create as vanilla,
   type Store,
   type State,
-  type StoreUpdater,
   type EqualFn
 } from "../create.js";
 import { type Assign, assign, shallow } from "../utils.js";
 
 export interface ObjectStore<T> {
-  assign: (...nextStates: StoreUpdater<T, Partial<T>>[]) => void;
+  assign: (...nextStates: AssignUpdater<T>[]) => void;
 }
 
-export function object<S extends Store<any>>(store: S) {
+export function object<S extends Store<any>>(
+  store: S
+): Assign<S, ObjectStore<State<S>>> {
   type T = State<S>;
   return assign<S, ObjectStore<T>>(store, {
     assign: (...nextStates) => {
@@ -37,3 +38,7 @@ export function create<T, H extends object = {}>(
   const store = vanilla(initialState, handlers, equalFn);
   return object(store as any) as Assign<typeof store, ObjectStore<T>>;
 }
+
+// Utils
+
+export type AssignUpdater<T> = T | Partial<T> | ((state: T) => T | Partial<T>);

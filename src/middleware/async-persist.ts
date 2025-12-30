@@ -2,7 +2,7 @@ import type { Store, State } from "../create";
 import type { Versioned } from "./persist";
 import { create } from "./object.js";
 import { getTransaction, nofork } from "../transaction.js";
-import { assign, debounce } from "../utils.js";
+import { type Assign, assign, debounce } from "../utils.js";
 
 export interface AsyncPersistStore {
   persist: ReturnType<
@@ -30,7 +30,7 @@ export interface AsyncPersistOptions<T, P, R> {
 export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
   store: S,
   options: AsyncPersistOptions<State<S>, P, R> = {}
-) {
+): Assign<S, AsyncPersistStore> {
   type T = State<S>;
   type Default<O extends keyof AsyncPersistOptions<T, P, R>> = NonNullable<
     AsyncPersistOptions<T, P, R>[O]

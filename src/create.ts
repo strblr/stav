@@ -1,5 +1,5 @@
 import { getInternals, type Internals } from "./internals.js";
-import { assign } from "./utils.js";
+import { type Assign, assign } from "./utils.js";
 
 export interface Store<T> {
   get: () => T;
@@ -12,7 +12,7 @@ export function create<T, H extends object = {}>(
   initialState: T,
   handlers = {} as H,
   equalFn: EqualFn<T> = Object.is
-) {
+): Assign<Store<T>, H> {
   const internals: Internals<T> = {
     state: initialState,
     listeners: new Map()
@@ -48,7 +48,7 @@ export function create<T, H extends object = {}>(
 
 // Utils
 
-export type StoreUpdater<T, U = T> = T | U | ((state: T) => T | U);
+export type StoreUpdater<T> = T | ((state: T) => T);
 
 export type StoreListener<T> = (state: T, previousState: T) => void;
 
