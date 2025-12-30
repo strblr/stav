@@ -1,4 +1,9 @@
-import type { State, Store } from "../create.js";
+import {
+  create as vanilla,
+  type EqualFn,
+  type State,
+  type Store
+} from "../create.js";
 import { type Assign, assign } from "../utils.js";
 
 export interface ArrayStore<T> {
@@ -64,6 +69,20 @@ export function array<S extends Store<any[]>>(
       store.set(state => state.with(index, value));
     }
   });
+}
+
+// create
+
+export function create<T extends readonly any[], H extends object = {}>(
+  initialState: T,
+  handlers?: H,
+  equalFn?: EqualFn<T>
+) {
+  const store = vanilla(initialState, handlers, equalFn);
+  return array(store as any) as Assign<
+    Assign<Store<T>, H>,
+    ArrayStore<T[number]>
+  >;
 }
 
 // Utils
