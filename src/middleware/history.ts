@@ -1,7 +1,7 @@
 import type { State, Store } from "../create.js";
 import { create } from "./object.js";
 import { nocommit } from "../transaction.js";
-import { type Assign, assign, createScope } from "../utils.js";
+import { type Assign, createScope } from "../utils.js";
 
 export interface HistoryStore<D> {
   history: ReturnType<
@@ -85,7 +85,8 @@ export function history<S extends Store<any>, D = State<S>>(
     }
   );
 
-  assign(history, { [nocommit]: true });
+  const historyStore: HistoryStore<D> = { history };
+  Object.assign(history, { [nocommit]: true });
 
   store.subscribe((state, previousState) => {
     if (!tracking.get() || !history.get().tracking) {
@@ -99,7 +100,7 @@ export function history<S extends Store<any>, D = State<S>>(
     }));
   }, true);
 
-  return assign<S, HistoryStore<D>>(store, { history });
+  return Object.assign(store, historyStore);
 }
 
 // Utils

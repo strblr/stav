@@ -1,7 +1,7 @@
 import "@redux-devtools/extension";
 import type { Config } from "@redux-devtools/extension";
 import type { State, Store, StoreUpdater } from "../create.js";
-import { type Assign, assign, createScope } from "../utils.js";
+import { type Assign, createScope } from "../utils.js";
 
 export interface DevtoolsStore<T> {
   devtools: {
@@ -43,7 +43,7 @@ export function devtools<S extends Store<any>>(
         switch (message.payload.type) {
           case "RESET":
             recording.act(false, () => {
-              store.set(store.getInitial);
+              store.set(store.get.initial);
             });
             connection.init(store.get());
             return;
@@ -79,7 +79,7 @@ export function devtools<S extends Store<any>>(
     connection?.send({ type: action, ...data }, state);
   });
 
-  return assign<S, DevtoolsStore<State<S>>>(store, {
+  const devtoolsStore: DevtoolsStore<State<S>> = {
     devtools: {
       cleanup: () => {
         recording.set(false);
@@ -90,7 +90,9 @@ export function devtools<S extends Store<any>>(
     set: (nextState, action = defaultActionType, data) => {
       metadata.act({ action, data }, () => set(nextState));
     }
-  });
+  };
+
+  return Object.assign(store, devtoolsStore);
 }
 
 // Utils

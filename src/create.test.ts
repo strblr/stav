@@ -7,7 +7,7 @@ describe("create", () => {
     const store = create({ count: 0 });
     expect(store).toBeDefined();
     expect(store.get).toBeFunction();
-    expect(store.getInitial).toBeFunction();
+    expect(store.get.initial).toBeFunction();
     expect(store.set).toBeFunction();
     expect(store.subscribe).toBeFunction();
   });
@@ -69,11 +69,11 @@ describe("get", () => {
   });
 });
 
-describe("getInitial", () => {
+describe("get.initial", () => {
   test("returns initial state", () => {
     const initialState = { count: 0 };
     const store = create(initialState);
-    expect(store.getInitial()).toBe(initialState);
+    expect(store.get.initial()).toBe(initialState);
   });
 
   test("returns initial state even after updates", () => {
@@ -81,13 +81,13 @@ describe("getInitial", () => {
     const store = create(initialState);
     store.set({ count: 5 });
     store.set({ count: 10 });
-    expect(store.getInitial()).toBe(initialState);
+    expect(store.get.initial()).toBe(initialState);
   });
 
   test("returns initial primitive value", () => {
     const store = create(42);
     store.set(100);
-    expect(store.getInitial()).toBe(42);
+    expect(store.get.initial()).toBe(42);
   });
 });
 

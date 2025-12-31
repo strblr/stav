@@ -4,7 +4,7 @@ import {
   type State,
   type EqualFn
 } from "../create.js";
-import { type Assign, assign, shallow } from "../utils.js";
+import { type Assign, shallow } from "../utils.js";
 
 export interface ObjectStore<T> {
   assign: (...nextStates: AssignUpdater<T>[]) => void;
@@ -14,7 +14,8 @@ export function object<S extends Store<any>>(
   store: S
 ): Assign<S, ObjectStore<State<S>>> {
   type T = State<S>;
-  return assign<S, ObjectStore<T>>(store, {
+
+  const objectStore: ObjectStore<T> = {
     assign: (...nextStates) => {
       const state = nextStates.reduce((state, nextState) => {
         const partial =
@@ -25,7 +26,9 @@ export function object<S extends Store<any>>(
       }, store.get());
       store.set(() => state);
     }
-  });
+  };
+
+  return Object.assign(store, objectStore);
 }
 
 // create

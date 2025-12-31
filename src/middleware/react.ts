@@ -8,7 +8,7 @@ import {
 import type { Store, EqualFn, State } from "../create.js";
 import type { PersistStore } from "./persist.js";
 import type { AsyncPersistStore } from "./async-persist.js";
-import { type Assign, assign } from "../utils.js";
+import type { Assign } from "../utils.js";
 
 export interface ReactStore<T> {
   use: <U = T>(selector?: (state: T) => U, equalFn?: EqualFn<U>) => U;
@@ -17,9 +17,10 @@ export interface ReactStore<T> {
 export function react<S extends Store<any>>(
   store: S
 ): Assign<S, ReactStore<State<S>>> {
-  return assign<S, ReactStore<State<S>>>(store, {
+  const reactStore: ReactStore<State<S>> = {
     use: (...args) => useStore(store, ...args)
-  });
+  };
+  return Object.assign(store, reactStore);
 }
 
 // useStore
@@ -48,7 +49,7 @@ export function useStore<T, U = T>(
   const slice = useSyncExternalStore(
     store.subscribe,
     () => getSlice(store.get()),
-    () => getSlice(store.getInitial())
+    () => getSlice(store.get.initial())
   );
 
   useDebugValue(slice);

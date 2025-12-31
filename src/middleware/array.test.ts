@@ -47,7 +47,7 @@ describe("array middleware", () => {
     const store = array(create([1, 2, 3]));
     store.push();
     expect(store.get()).toEqual([1, 2, 3]);
-    expect(store.get()).toBe(store.getInitial());
+    expect(store.get()).toBe(store.get.initial());
   });
 
   test("unshift adds items to start", () => {
@@ -60,7 +60,7 @@ describe("array middleware", () => {
     const store = array(create([1, 2, 3]));
     store.unshift();
     expect(store.get()).toEqual([1, 2, 3]);
-    expect(store.get()).toBe(store.getInitial());
+    expect(store.get()).toBe(store.get.initial());
   });
 
   test("concat merges arrays", () => {
@@ -73,7 +73,7 @@ describe("array middleware", () => {
     const store = array(create([1, 2, 3]));
     store.concat();
     expect(store.get()).toEqual([1, 2, 3]);
-    expect(store.get()).toBe(store.getInitial());
+    expect(store.get()).toBe(store.get.initial());
   });
 
   test("filter removes items that don't match predicate", () => {
@@ -98,14 +98,14 @@ describe("array middleware", () => {
     const store = array(create([1, 2, 3, 4]));
     store.reverse();
     expect(store.get()).toEqual([4, 3, 2, 1]);
-    expect(store.getInitial()).toEqual([1, 2, 3, 4]);
+    expect(store.get.initial()).toEqual([1, 2, 3, 4]);
   });
 
   test("sort sorts array", () => {
     const store = array(create([3, 1, 4, 1, 5]));
     store.sort();
     expect(store.get()).toEqual([1, 1, 3, 4, 5]);
-    expect(store.getInitial()).toEqual([3, 1, 4, 1, 5]);
+    expect(store.get.initial()).toEqual([3, 1, 4, 1, 5]);
   });
 
   test("sort with custom comparator", () => {
@@ -118,7 +118,7 @@ describe("array middleware", () => {
     const store = array(create([0, 1, 2, 3, 4, 5]));
     store.slice(2, 5);
     expect(store.get()).toEqual([2, 3, 4]);
-    expect(store.getInitial()).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(store.get.initial()).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
   test("slice with start only", () => {
@@ -137,7 +137,7 @@ describe("array middleware", () => {
     const store = array(create([0, 1, 2, 3, 4, 5]));
     store.slice();
     expect(store.get()).toEqual([0, 1, 2, 3, 4, 5]);
-    expect(store.get()).not.toBe(store.getInitial());
+    expect(store.get()).not.toBe(store.get.initial());
   });
 
   test("works with objects", () => {

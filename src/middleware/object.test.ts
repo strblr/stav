@@ -139,7 +139,7 @@ describe("create", () => {
       { count: 0, name: "test" },
       {
         increment: () => store.assign({ count: store.get().count + 1 }),
-        reset: () => store.set(store.getInitial)
+        reset: () => store.set(store.get.initial)
       }
     );
 

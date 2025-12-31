@@ -1,9 +1,11 @@
 import { getInternals, type Internals } from "./internals.js";
-import { type Assign, assign } from "./utils.js";
+import { type Assign } from "./utils.js";
 
 export interface Store<T> {
-  get: () => T;
-  getInitial: () => T;
+  get: {
+    (): T;
+    initial: () => T;
+  };
   set: (nextState: StoreUpdater<T>) => void;
   subscribe: (listener: StoreListener<T>, inherit?: boolean) => () => void;
 }
@@ -19,8 +21,9 @@ export function create<T, H extends object = {}>(
   };
 
   const store: Store<T> = {
-    get: () => getInternals(store, internals).state,
-    getInitial: () => initialState,
+    get: Object.assign(() => getInternals(store, internals).state, {
+      initial: () => initialState
+    }),
     set: nextState => {
       const current = getInternals(store, internals);
       const { state, listeners } = current;
@@ -43,7 +46,7 @@ export function create<T, H extends object = {}>(
     }
   };
 
-  return assign(store, handlers);
+  return Object.assign(store, handlers);
 }
 
 // Utils

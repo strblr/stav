@@ -1,7 +1,7 @@
 import type { Store, State } from "../create.js";
 import { create } from "./object.js";
 import { getTransaction, nofork } from "../transaction.js";
-import { type Assign, assign } from "../utils.js";
+import type { Assign } from "../utils.js";
 
 export interface PersistStore {
   persist: ReturnType<
@@ -91,7 +91,8 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   );
 
-  assign(persist, { [nofork]: true });
+  const persistStore: PersistStore = { persist };
+  Object.assign(persist, { [nofork]: true });
 
   store.subscribe(state => {
     if (!storage || persist.get().hydrating || getTransaction()) {
@@ -112,7 +113,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     } catch {}
   }
 
-  return assign<S, PersistStore>(store, { persist });
+  return Object.assign(store, persistStore);
 }
 
 // Utils

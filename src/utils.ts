@@ -1,13 +1,5 @@
 import type { StoreListener, EqualFn } from "./create.js";
 
-// assign
-
-export type Assign<T extends object, U> = Pretty<Omit<T, keyof U> & U>;
-
-export function assign<T extends object, U>(a: T, b: U): Assign<T, U> {
-  return Object.assign(a, b);
-}
-
 // pick
 
 export function pick<T extends object, K extends keyof T>(
@@ -192,5 +184,7 @@ export function deep<T>(a: T, b: T): boolean {
 }
 
 // Utils
+
+export type Assign<T extends object, U> = Pretty<Omit<T, keyof U> & U>;
 
 type Pretty<T> = { [K in keyof T]: T[K] } & NonNullable<unknown>;

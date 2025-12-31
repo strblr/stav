@@ -1,5 +1,5 @@
 import { create, EqualFn, type State, type Store } from "../create.js";
-import { type Assign, assign, createScope } from "../utils.js";
+import { type Assign, createScope } from "../utils.js";
 
 export interface EntangleStore {
   untangle: () => void;
@@ -18,6 +18,12 @@ export function entangle<S extends Store<any>, S2 extends Store<any>>(
   const { with: sourceStore, get, set } = options;
   const syncing = createScope(false);
   const unsubscribes: (() => void)[] = [];
+
+  const entangleStore: EntangleStore = {
+    untangle: () => {
+      unsubscribes.forEach(f => f());
+    }
+  };
 
   if (get) {
     const hydrate = () => {
@@ -45,11 +51,7 @@ export function entangle<S extends Store<any>, S2 extends Store<any>>(
     );
   }
 
-  return assign<S, EntangleStore>(store, {
-    untangle: () => {
-      unsubscribes.forEach(f => f());
-    }
-  });
+  return Object.assign(store, entangleStore);
 }
 
 // derive

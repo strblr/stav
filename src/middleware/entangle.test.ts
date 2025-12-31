@@ -33,7 +33,7 @@ describe("entangle", () => {
     expect(result.get).toBeFunction();
     expect(result.set).toBeFunction();
     expect(result.subscribe).toBeFunction();
-    expect(result.getInitial).toBeFunction();
+    expect(result.get.initial).toBeFunction();
     expect(result.untangle).toBeFunction();
   });
 
