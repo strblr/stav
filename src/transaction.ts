@@ -1,5 +1,5 @@
 import type { Store } from "./create.js";
-import type { Internals } from "./internals.js";
+import { nocommit, nofork, type Internals } from "./internals.js";
 import { createScope } from "./utils.js";
 
 export interface Transaction {
@@ -10,8 +10,6 @@ export interface Transaction {
 }
 
 const scope = createScope<Transaction | null>(null);
-export const nofork = Symbol("nofork");
-export const nocommit = Symbol("nocommit");
 
 export function getTransaction() {
   return scope.get();
@@ -47,4 +45,18 @@ export function transaction<T>(fn: (act: Transaction["act"]) => T): T {
       return result;
     }) as T;
   }
+}
+
+export function txConfig<S extends Store<any>>(
+  store: S,
+  options: { fork?: boolean; commit?: boolean }
+) {
+  const { fork = true, commit = true } = options;
+  if (!fork) {
+    Object.assign(store, { [nofork]: true });
+  }
+  if (!commit) {
+    Object.assign(store, { [nocommit]: true });
+  }
+  return store;
 }

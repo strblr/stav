@@ -1,6 +1,6 @@
 import type { Store, State } from "../create.js";
 import { create } from "./object.js";
-import { getTransaction, nofork } from "../transaction.js";
+import { getTransaction, txConfig } from "../transaction.js";
 import type { Assign } from "../utils.js";
 
 export interface PersistStore {
@@ -51,48 +51,50 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   } = options;
 
-  const persist = create(
-    {
-      hydrating: false,
-      hydrated: false
-    },
-    {
-      hydrate: () => {
-        if (!storage || persist.get().hydrating || getTransaction()) {
-          return;
-        }
-        const success = () => {
-          persist.assign({ hydrated: true });
-        };
-        try {
-          persist.assign({ hydrating: true });
-          const serialized = storage.getItem(key);
-          if (serialized === null) {
-            return success();
+  const persist = txConfig(
+    create(
+      {
+        hydrating: false,
+        hydrated: false
+      },
+      {
+        hydrate: () => {
+          if (!storage || persist.get().hydrating || getTransaction()) {
+            return;
           }
-          let [partialized, storedVersion] = deserialize(serialized);
-          if (storedVersion !== version) {
-            if (!migrate) {
+          const success = () => {
+            persist.assign({ hydrated: true });
+          };
+          try {
+            persist.assign({ hydrating: true });
+            const serialized = storage.getItem(key);
+            if (serialized === null) {
               return success();
             }
-            partialized = migrate(partialized, storedVersion);
+            let [partialized, storedVersion] = deserialize(serialized);
+            if (storedVersion !== version) {
+              if (!migrate) {
+                return success();
+              }
+              partialized = migrate(partialized, storedVersion);
+            }
+            const state = store.get();
+            const nextState = merge(partialized, state);
+            store.set(nextState);
+            success();
+          } catch (error) {
+            onError(error, "hydrate");
+            throw error;
+          } finally {
+            persist.assign({ hydrating: false });
           }
-          const state = store.get();
-          const nextState = merge(partialized, state);
-          store.set(nextState);
-          success();
-        } catch (error) {
-          onError(error, "hydrate");
-          throw error;
-        } finally {
-          persist.assign({ hydrating: false });
         }
       }
-    }
+    ),
+    { fork: false }
   );
 
   const persistStore: PersistStore = { persist };
-  Object.assign(persist, { [nofork]: true });
 
   store.subscribe(state => {
     if (!storage || persist.get().hydrating || getTransaction()) {

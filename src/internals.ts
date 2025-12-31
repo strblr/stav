@@ -1,5 +1,5 @@
 import type { Store, StoreListener } from "./create.js";
-import { getTransaction, nofork, type Transaction } from "./transaction.js";
+import { getTransaction, type Transaction } from "./transaction.js";
 
 export interface Internals<T> {
   state: T;
@@ -31,3 +31,6 @@ function upsertInternals<T>(
   }
   return fork;
 }
+
+export const nofork = Symbol("nofork");
+export const nocommit = Symbol("nocommit");
