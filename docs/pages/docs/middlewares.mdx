@@ -160,3 +160,18 @@ const store = preprocess(preprocess(create({ count: 0 }), { validate }), {
   transform
 });
 ```
+
+## Available middlewares
+
+- [`object`](/docs/middlewares/object) - Adds methods to the store to work with plain objects.
+- [`react`](/docs/middlewares/react) - Adds a `use` hook to the store.
+- [`history`](/docs/middlewares/history) - Adds undo / redo functionality to the store.
+- [`persist`](/docs/middlewares/persist) - Persists the store (sync or async storage supported)
+- [`immer`](/docs/middlewares/immer) - Adds support for [Immer](https://immerjs.github.io/immer/) to the store.
+- [`array`](/docs/middlewares/array) - Adds methods to the store to work with arrays.
+- [`preprocess`](/docs/middlewares/preprocess) - Validates and transforms the state before it is set.
+- [`redux`](/docs/middlewares/redux) - Adds support for the reducer pattern to the store.
+- [`devtools`](/docs/middlewares/devtools) - Adds support for the Redux DevTools extension.
+- [`entangle`](/docs/middlewares/entangle) - Entangles two stores together, syncing their state automatically.
+- [`ssr-safe`](/docs/middlewares/ssr-safe) - Prevents `set` from being called in SSR environments.
+- [`verbose`](/docs/middlewares/verbose) - Logs all state changes and subscriptions.

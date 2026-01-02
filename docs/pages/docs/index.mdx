@@ -381,45 +381,6 @@ The equality function defaults to `Object.is`, which works well in most cases bu
 
 More about utility functions: [Utilities](/docs/utilities)
 
-## Store API
+import CoreApi from "../../snippets/api/core.mdx";
 
-### `create(initialState, handlers?, equalFn?)`
-
-Creates a new store.
-
-- **Parameters:**
-  - `initialState: T` - The initial state value (can be any type)
-  - `handlers?: H` - Optional object containing custom handler methods
-  - `equalFn?: (state: T, nextState: T) => boolean` - Optional equality function (defaults to `Object.is`)
-- **Returns:** `Store<T> & H` - A store with core methods and custom handlers
-
-### `Store<T>` object
-
-#### `get()`
-
-Get the current state.
-
-- **Returns:** `T` - The current state
-
-#### `get.initial()`
-
-Get the initial state that was passed to `create`.
-
-- **Returns:** `T` - The initial state
-
-#### `set(nextState)`
-
-Update the state.
-
-- **Parameters:**
-  - `nextState: T | ((state: T) => T)` - New state value or updater function
-- **Returns:** `void`
-
-#### `subscribe(listener, inherit?)`
-
-Subscribe to state changes.
-
-- **Parameters:**
-  - `listener: (state: T, previousState: T) => void` - Function called when state changes
-  - `inherit?: boolean` - Whether the subscription should be inherited in transactions (defaults to `false`)
-- **Returns:** `() => void` - Unsubscribe function
+<CoreApi />

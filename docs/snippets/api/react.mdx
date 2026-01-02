@@ -1,0 +1,27 @@
+## React API
+
+### `react(store)`
+
+Middleware that adds a `use` hook to the store.
+
+- **Parameters:**
+  - `store: Store<T>` - The store to enhance
+- **Returns:** The same store with a `use` hook added
+
+### `useStore(store, selector?, equalFn?)`
+
+Hook to consume stores in React components.
+
+- **Parameters:**
+  - `store: Store<T>` - The store to subscribe to
+  - `selector?: (state: T) => U` - Optional function to select a slice of state (defaults to returning full state)
+  - `equalFn?: (a: U, b: U) => boolean` - Optional equality function to determine if the slice has changed (defaults to React's internal `Object.is` usage)
+- **Returns:** The selected slice of state
+
+### `useHydration(stores)`
+
+Hook to wait for persistent stores to hydrate before rendering. Calls `hydrate()` on any stores that haven't been hydrated yet.
+
+- **Parameters:**
+  - `stores: (PersistStore | AsyncPersistStore)[]` - Array of stores with persistence middleware
+- **Returns:** `boolean` - `true` when all stores are hydrated, `false` otherwise

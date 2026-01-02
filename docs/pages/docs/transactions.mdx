@@ -211,41 +211,6 @@ console.log(store3.get());
 - `fork: false` - The store is not forked during transactions. All changes happen immediately on the real store.
 - `commit: false` - The store is forked during transactions, but changes are discarded when the transaction commits. Useful for temporary state that should only exist during the transaction.
 
-## Transaction API
+import TransactionApi from "../../snippets/api/transaction.mdx";
 
-### `transaction(fn)`
-
-Execute a function within a transaction and automatically commit when it completes.
-
-- **Parameters:**
-  - `fn: (act: Transaction["act"]) => T` - Function to execute in the transaction
-- **Returns:** The return value of `fn`
-
-### `createTransaction(parent?)`
-
-Create a new transaction manually.
-
-- **Parameters:**
-  - `parent?: Transaction | null` - Optional parent transaction (defaults to current transaction if any)
-- **Returns:** `Transaction` object
-
-### `Transaction` object
-
-- `act(fn)` - Execute a function within the transaction's context
-- `commit()` - Commit all changes to the actual stores
-- `parent` - The parent transaction, if any
-
-### `txConfig(store, options)`
-
-Middleware to configure how a store behaves in transactions.
-
-- **Parameters:**
-  - `store: Store<T>` - The store to configure
-  - `options: { fork?: boolean; commit?: boolean }` - Configuration options, both default to `true`
-- **Returns:** The same store (mutated)
-
-### `getTransaction()`
-
-Get the current active transaction, if any.
-
-- **Returns:** `Transaction | null`
+<TransactionApi />

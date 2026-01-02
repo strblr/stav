@@ -1,0 +1,332 @@
+# Utilities
+
+Stav provides a collection of utility functions that help you work with stores more effectively. These utilities cover common patterns like picking or omitting properties from an object, state comparison, subscribing to store slices, and more.
+
+## Object utilities
+
+### `pick`
+
+Create a function that picks specific properties from an object. Useful for selecting multiple properties from state.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { pick } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { pick } from "stav";
+
+const user = { name: "Alice", age: 30, email: "alice@example.com" };
+
+const pickNameAndAge = pick("name", "age");
+const result = pickNameAndAge(user);
+
+console.log(result);
+// @log: { name: "Alice", age: 30 }
+```
+
+The `pick` and `omit` utilities are particularly useful when combined with React hooks, `Array.prototype.map`, or with the `slice` utility to narrow objects while avoiding having to write arrow functions:
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { pick, shallow } from "../../src/utils";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create, pick, shallow } from "stav";
+//               ^^^^
+import { react } from "stav/react";
+
+const store = react(
+  create({
+    name: "Alice",
+    age: 30,
+    email: "alice@example.com",
+    theme: "dark"
+  })
+);
+
+function UserInfo() {
+  const user = store.use(s => ({ name: s.name, email: s.email }), shallow); // [!code --]
+  const user = store.use(pick("name", "email"), shallow); // [!code ++]
+  return (
+    <div>
+      {user.name} - {user.email}
+    </div>
+  );
+}
+```
+
+### `omit`
+
+Create a function that omits specific properties from an object. Useful for excluding certain properties from state.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { omit } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { omit } from "stav";
+//       ^^^^
+
+const user = { name: "Alice", age: 30, email: "alice@example.com" };
+
+const omitEmail = omit("email");
+const result = omitEmail(user);
+
+console.log(result);
+// @log: { name: "Alice", age: 30 }
+```
+
+## Equality functions
+
+Equality functions determine whether two values should be considered equal. They're used with `create`, `slice`, and React hooks to control when updates should happen or trigger notifications or re-renders.
+
+### `shallow`
+
+Performs shallow equality comparison, checking if two values are equal by comparing their properties one level deep.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { shallow } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { shallow } from "stav";
+//       ^^^^^^^
+
+const a = { name: "Alice", age: 30 };
+const b = { name: "Alice", age: 30 };
+const c = { name: "Bob", age: 30 };
+
+console.log(shallow(a, b));
+// @log: true
+
+console.log(shallow(a, c));
+// @log: false
+```
+
+import { Callout } from "vocs/components";
+
+<Callout type="info">
+  `shallow` compares arrays by checking if they have the same length and if each
+  element is strictly equal (`Object.is`). It does not perform deep comparison
+  of nested objects within arrays.
+</Callout>
+
+### `deep`
+
+Performs deep equality comparison, recursively checking if two values are equal. Handles primitives, objects, arrays, Maps, Sets, Dates, RegExps, TypedArrays, and Errors.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { deep } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { deep } from "stav";
+//       ^^^^
+
+const a = { user: { name: "Alice", tags: ["admin", "user"] } };
+const b = { user: { name: "Alice", tags: ["admin", "user"] } };
+const c = { user: { name: "Alice", tags: ["user"] } };
+
+console.log(deep(a, b));
+// @log: true
+
+console.log(deep(a, c));
+// @log: false
+```
+
+<Callout type="warning">
+  `deep` has performance implications for large or deeply nested structures. It
+  recursively traverses the entire object tree. Use it judiciously and consider
+  `shallow` for most cases.
+</Callout>
+
+## Subscription utilities
+
+### `slice`
+
+Create a listener that only fires when a specific slice of state changes. This is useful for subscribing to a subset of your state without getting notified about unrelated changes.
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { slice } from "../../src/utils";
+‎
+// @filename: index.ts
+// ---cut---
+import { create, slice } from "stav";
+//               ^^^^^
+
+const store = create({ count: 0, name: "Alice" });
+
+store.subscribe(
+  slice( // [!code hl]
+    state => state.count, // [!code hl]
+    (count, previousCount) => { // [!code hl]
+      console.log(`Count changed from ${previousCount} to ${count}`); // [!code hl]
+    } // [!code hl]
+  ) // [!code hl]
+);
+
+store.set({ count: 1, name: "Alice" });
+// @log: Count changed from 0 to 1
+
+store.set({ count: 1, name: "Bob" });
+// Doesn't log anything, count didn't change
+```
+
+You can provide a custom equality function as the third argument to control when the slice is considered changed (defaults to `Object.is`):
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { slice, shallow } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { create, slice, shallow } from "stav";
+//                      ^^^^^^^
+
+type Todo = { id: number; text: string; completed: boolean };
+
+const store = create({ todos: [] as Todo[] });
+
+store.subscribe(
+  slice(
+    state => state.todos.filter(t => !t.completed),
+    activeTodos => {
+      console.log(`Active todos: ${activeTodos.length}`);
+    },
+    shallow // [!code ++]
+  )
+);
+```
+
+## Function utilities
+
+### `debounce`
+
+Create a debounced version of a function that delays its execution until after a specified delay has elapsed since the last time it was invoked.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { debounce } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { debounce } from "stav";
+//       ^^^^^^^^
+
+const log = debounce((message: string) => {
+  console.log(message);
+}, 1000);
+
+log("Hello");
+log("World");
+log("!");
+
+// Only logs "!" after 1 second
+```
+
+The debounced function includes a `cancel` method to cancel pending executions:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { debounce } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { create, debounce } from "stav";
+
+const queryStore = create("");
+
+const search = debounce((query: string) => {
+  console.log("Searching for:", query);
+}, 500);
+
+queryStore.subscribe(query => {
+  if (query) {
+    search(query);
+  } else {
+    search.cancel(); // [!code hl]
+  }
+});
+
+queryStore.set("hello");
+queryStore.set("hello world");
+queryStore.set("");
+// Nothing is logged, search was cancelled
+```
+
+## Scope utilities
+
+### `createScope`
+
+Create a scoped value container that can temporarily override its value within a specific execution context. This is useful for context-like patterns or testing.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { createScope } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { createScope } from "stav";
+//       ^^^^^^^^^^^
+
+const userScope = createScope("Guest");
+
+console.log(userScope.get());
+// @log: Guest
+
+userScope.set("Alice");
+console.log(userScope.get());
+// @log: Alice
+```
+
+The `act` method allows you to temporarily override the value for a specific function execution:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { createScope } from "../../src/utils";
+‎
+// @filename: index.ts
+// ---cut---
+import { createScope } from "stav";
+
+const userScope = createScope("Alice");
+
+function greet() {
+  return `Hello, ${userScope.get()}!`;
+}
+
+console.log(greet());
+// @log: Hello, Alice!
+
+const result = userScope.act("Bob", () => greet()); // [!code hl]
+
+console.log(result);
+// @log: Hello, Bob!
+
+console.log(greet());
+// @log: Hello, Alice!
+```
+
+This is mainly used by Stav internally. For example, it is used to control transaction scopes, and to avoid middlewares from running their side-effects on their own updates, avoiding infinite loops.
+
+import UtilitiesApi from "../../snippets/api/utilities.mdx";
+
+<UtilitiesApi />

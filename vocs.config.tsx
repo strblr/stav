@@ -135,10 +135,12 @@ export default defineConfig({
         collapsed: false,
         items: [
           {
-            text: "Core"
+            text: "Core",
+            link: "/docs/api/core"
           },
           {
-            text: "Middlewares"
+            text: "Middlewares",
+            link: "/docs/api/middlewares"
           }
         ]
       }

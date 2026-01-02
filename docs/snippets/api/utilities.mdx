@@ -1,0 +1,65 @@
+## Utilities API
+
+### `pick(...keys)`
+
+Create a function that picks specific properties from an object.
+
+- **Parameters:**
+  - `...keys: K[]` - Property keys to pick
+- **Returns:** `(object: T) => Pick<T, K>` - Function that picks the specified properties
+
+### `omit(...keys)`
+
+Create a function that omits specific properties from an object.
+
+- **Parameters:**
+  - `...keys: K[]` - Property keys to omit
+- **Returns:** `(object: T) => Omit<T, K>` - Function that omits the specified properties
+
+### `shallow(a, b)`
+
+Perform shallow equality comparison between two values.
+
+- **Parameters:**
+  - `a: T` - First value
+  - `b: T` - Second value
+- **Returns:** `boolean` - `true` if values are shallowly equal, `false` otherwise
+
+### `deep(a, b)`
+
+Perform deep equality comparison between two values.
+
+- **Parameters:**
+  - `a: T` - First value
+  - `b: T` - Second value
+- **Returns:** `boolean` - `true` if values are deeply equal, `false` otherwise
+
+### `slice(selector, listener, equalFn?)`
+
+Create a listener that only fires when a specific slice of state changes.
+
+- **Parameters:**
+  - `selector: (state: T) => U` - Function to select a slice of state
+  - `listener: (slice: U, previousSlice: U) => void` - Listener to call when the slice changes
+  - `equalFn?: (a: U, b: U) => boolean` - Optional equality function (defaults to `Object.is`)
+- **Returns:** `(state: T, previousState: T) => void` - Store listener function
+
+### `debounce(fn, delay)`
+
+Create a debounced version of a function.
+
+- **Parameters:**
+  - `fn: (...args: T) => void` - Function to debounce
+  - `delay: number` - Delay in milliseconds
+- **Returns:** `((...args: T) => void) & { cancel: () => void }` - Debounced function with a `cancel` method
+
+### `createScope(value)`
+
+Create a scoped value container.
+
+- **Parameters:**
+  - `value: T` - Initial value
+- **Returns:** Object with:
+  - `get: () => T` - Get the current value
+  - `set: (value: T) => void` - Change the value
+  - `act: <U>(scopedValue: T, fn: () => U) => U` - Execute a function with a temporary scoped value
