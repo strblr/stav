@@ -2,28 +2,26 @@ import type { StoreListener, EqualFn } from "./create.js";
 
 // pick
 
-export function pick<T extends object, K extends keyof T>(
-  object: T,
-  keys: readonly K[]
-): Pretty<Pick<T, K>> {
-  const result = {} as Pick<T, K>;
-  for (const key of keys) {
-    result[key] = object[key];
-  }
-  return result;
+export function pick<K extends string = never>(...keys: readonly K[]) {
+  return <T extends Record<K, any>>(object: T): Pretty<Pick<T, K>> => {
+    const result = {} as Pick<T, K>;
+    for (const key of keys) {
+      result[key] = object[key];
+    }
+    return result;
+  };
 }
 
 // omit
 
-export function omit<T extends object, K extends keyof T>(
-  object: T,
-  keys: readonly K[]
-): Pretty<Omit<T, K>> {
-  const result = { ...object };
-  for (const key of keys) {
-    delete result[key];
-  }
-  return result;
+export function omit<K extends string = never>(...keys: readonly K[]) {
+  return <T extends Record<K, any>>(object: T): Pretty<Omit<T, K>> => {
+    const result = { ...object };
+    for (const key of keys) {
+      delete result[key];
+    }
+    return result;
+  };
 }
 
 // createScope
