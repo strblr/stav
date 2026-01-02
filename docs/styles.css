@@ -1,0 +1,17 @@
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--vocs-color_text3);
+  font-size: 14px;
+  line-height: 1.5em;
+  width: 100%;
+}
+
+.twoslash-completion-list .twoslash-completion-list-item {
+  line-height: 1.1em;
+}
+
+.vocs_Tabs_list {
+  overflow-x: auto;
+}

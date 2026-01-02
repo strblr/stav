@@ -15,5 +15,6 @@
     "noFallthroughCasesInSwitch": true,
     "outDir": "./dist"
   },
-  "exclude": ["node_modules", "dist", "docs", "**/*.test.ts"]
+  "include": ["src", "test-setup"],
+  "exclude": ["**/*.test.ts"]
 }

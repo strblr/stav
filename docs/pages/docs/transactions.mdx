@@ -1,0 +1,251 @@
+# Transactions
+
+Transactions allow you to batch multiple store updates together and commit them atomically. This is useful when you need to update multiple stores in a coordinated way, delay store updates, or when you want to test state changes before committing them.
+
+## Basic usage
+
+The simplest way to use transactions is with the `transaction` function:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { transaction } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, transaction } from "stav";
+//               ^^^^^^^^^^^
+
+const store1 = create({ count: 0 });
+const store2 = create({ total: 0 });
+
+transaction(() => {
+  store1.set({ count: 1 });
+  store2.set({ total: 100 });
+});
+
+console.log(store1.get());
+// @log: { count: 1 }
+console.log(store2.get());
+// @log: { total: 100 }
+```
+
+Inside a transaction, all store updates are isolated. They're only committed to the actual stores when the transaction completes successfully.
+
+## How it works
+
+When you call `transaction`, stav creates isolated "forks" of your stores. This process is lazy: only stores that are used within the transaction are forked. Forks consist of state and listeners. Any reads or writes during the transaction work with these forks instead of the real stores. When the transaction finishes, all changes are committed atomically.
+
+If the transaction fails, the forks are discarded without committing.
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { transaction } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, transaction } from "stav";
+
+const store = create({ count: 0 });
+
+store.subscribe(state => {
+  console.log("Store changed:", state.count);
+});
+
+transaction(() => {
+  store.set({ count: 1 });
+  console.log("Inside transaction:", store.get().count);
+  // @log: Inside transaction: 1
+
+  store.set({ count: 2 });
+  console.log("Inside transaction:", store.get().count);
+  // @log: Inside transaction: 2
+});
+
+// @log: Store changed: 2
+```
+
+Notice that the subscriber is only notified once, when the transaction commits, even though we called `set` twice inside the transaction.
+
+## Async transactions
+
+Transactions work with async code. But until [async contexts](https://github.com/tc39/proposal-async-context) make it to the standard, you need to wrap your store reads / writes using `act`.
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { transaction } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, transaction } from "stav";
+
+const userStore = create({ user: null });
+const profileStore = create({ profile: null });
+
+await transaction(async act => {
+  const userResponse = await fetch("/api/user");
+  const user = await userResponse.json();
+
+  act(() => userStore.set({ user }));
+
+  const profileResponse = await fetch("/api/profile/" + user.id);
+  const profile = await profileResponse.json();
+
+  act(() => profileStore.set({ profile }));
+});
+```
+
+import { Callout } from "vocs/components";
+
+<Callout type="info">
+  `await` creates a suspension point, after which stav has no way of knowing in
+  which transaction we are. This is the problem that async context will solve.
+  For now, `act` restores the proper transaction context.
+</Callout>
+
+## Nested transactions
+
+Transactions can be nested. Each nested transaction creates its own isolation layer:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { transaction } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, transaction } from "stav";
+
+const store = create({ count: 0 });
+
+transaction(() => {
+  store.set({ count: 1 });
+
+  transaction(() => {
+    store.set({ count: 2 });
+    console.log(store.get());
+    // @log: { count: 2 }
+  });
+
+  console.log(store.get());
+  // @log: { count: 2 }
+});
+
+console.log(store.get());
+// @log: { count: 2 }
+```
+
+## Manual transaction control
+
+For more control, you can create transactions manually:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { createTransaction } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, createTransaction } from "stav";
+
+const store = create({ count: 0 });
+
+const tx = createTransaction();
+
+tx.act(() => {
+  store.set({ count: 1 });
+});
+
+console.log(store.get());
+// @log: { count: 0 }
+
+tx.commit();
+
+console.log(store.get());
+// @log: { count: 1 }
+```
+
+The `act` method runs code within the transaction's context, and `commit` applies all changes to the parent context (either the actual stores or another transaction in case of nested transactions).
+
+## Opt-out
+
+It might not always be desirable to fork and commit all stores in a transaction. You can configure how individual stores behave in transactions using the `txConfig` middleware:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { transaction, txConfig } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, transaction, txConfig } from "stav";
+
+const store1 = create({ count: 0 });
+const store2 = txConfig(create({ log: [] }), { fork: false });
+const store3 = txConfig(create({ temp: 0 }), { commit: false });
+
+transaction(act => {
+  store1.set({ count: 1 }); // Normal: forked, later committed
+  store2.set({ log: ["a"] }); // No fork: changes happen to the real store
+  store3.set({ temp: 1 }); // No commit: Forked but never committed
+});
+
+console.log(store1.get());
+// @log: { count: 1 }
+
+console.log(store2.get());
+// @log: { log: ["a"] }
+
+console.log(store3.get());
+// @log: { temp: 0 }
+```
+
+- `fork: false` - The store is not forked during transactions. All changes happen immediately on the real store.
+- `commit: false` - The store is forked during transactions, but changes are discarded when the transaction commits. Useful for temporary state that should only exist during the transaction.
+
+## Transaction API
+
+### `transaction(fn)`
+
+Execute a function within a transaction and automatically commit when it completes.
+
+- **Parameters:**
+  - `fn: (act: Transaction["act"]) => T` - Function to execute in the transaction
+- **Returns:** The return value of `fn`
+
+### `createTransaction(parent?)`
+
+Create a new transaction manually.
+
+- **Parameters:**
+  - `parent?: Transaction | null` - Optional parent transaction (defaults to current transaction if any)
+- **Returns:** `Transaction` object
+
+### `Transaction` object
+
+- `act(fn)` - Execute a function within the transaction's context
+- `commit()` - Commit all changes to the actual stores
+- `parent` - The parent transaction, if any
+
+### `txConfig(store, options)`
+
+Middleware to configure how a store behaves in transactions.
+
+- **Parameters:**
+  - `store: Store<T>` - The store to configure
+  - `options: { fork?: boolean; commit?: boolean }` - Configuration options, both default to `true`
+- **Returns:** The same store (mutated)
+
+### `getTransaction()`
+
+Get the current active transaction, if any.
+
+- **Returns:** `Transaction | null`

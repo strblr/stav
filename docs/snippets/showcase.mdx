@@ -1,0 +1,168 @@
+:::code-group
+
+```ts [Core] twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+
+const store = create(
+  { count: 0 },
+  { increment: () => store.set(s => ({ count: s.count + 1 })) }
+);
+
+store.
+//    ^|
+
+‎
+‎
+
+store.set({ count: 1 });
+store.increment();
+console.log(store.get());
+// @log: { count: 2 }
+
+store.subscribe((s, previous) => {
+  console.log("Changed from", previous.count, "to", s.count);
+});
+
+store.set(store.get.initial());
+// @log: Changed from 2 to 0
+```
+
+```ts [React] twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create } from "stav";
+import { react } from "stav/react"; // [!code ++]
+
+const store = react(create({ count: 0 }));
+//            ^^^^^
+
+store.
+//    ^|
+
+
+
+
+function Counter() {
+  const count = store.use(s => s.count);
+//                    ^^^
+  return (
+    <button onClick={() => store.set({ count: count + 1 })}>
+      Increment {count}
+    </button>
+  );
+}
+```
+
+```ts [Undo] twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/history.d.ts
+export { history } from "../../src/middleware/history";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { history } from "stav/history"; // [!code ++]
+
+const store = history(create({ count: 0 }));
+//            ^^^^^^^
+
+store.
+//    ^|
+
+‎
+‎
+
+store.set({ count: 1 });
+
+store.history.undo();
+console.log(store.get());
+// @log: { count: 0 }
+
+store.history.redo();
+console.log(store.get());
+// @log: { count: 1 }
+```
+
+```ts [Derived] twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/entangle.d.ts
+export { derive } from "../../src/middleware/entangle";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { derive } from "stav/entangle"; // [!code ++]
+
+const celsius = create(0);
+
+const fahrenheit = derive(celsius, {
+  //               ^^^^^^
+  get: c => (c * 9) / 5 + 32,
+  set: f => ((f - 32) * 5) / 9
+});
+
+celsius.set(100);
+console.log(fahrenheit.get());
+// @log: 212
+
+fahrenheit.set(32);
+console.log(celsius.get());
+// @log: 0
+```
+
+```ts [Transaction] twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { transaction } from "../../src/transaction";
+
+// @filename: index.ts
+// ---cut---
+import { create, transaction } from "stav";
+//               ^^^^^^^^^^^
+
+const store = create({ count: 0 });
+
+transaction(() => {
+  // Either all or none pass
+  store.set({ count: 1 });
+  store.set({ count: 2 });
+  store.set({ count: 3 });
+});
+
+console.log(store.get());
+// @log: { count: 3 }
+
+try {
+  transaction(() => {
+    store.set({ count: 4 });
+    store.set({ count: 5 });
+    throw new Error();
+  });
+} catch {}
+
+console.log(store.get());
+// @log: { count: 3 }
+```
+
+:::

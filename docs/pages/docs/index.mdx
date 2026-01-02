@@ -1,0 +1,425 @@
+# Getting started
+
+Stav is a lightweight, framework-agnostic state management library that provides a smooth API for managing application state. It works seamlessly in vanilla JS/TS and any framework, on the server and in the browser, and ships with optional middlewares that extend its functionality.
+
+Installation:
+
+import Install from "../../snippets/install.mdx";
+
+<Install package="stav" />
+
+## Creating a store
+
+At its core, stav is really just a `create` function. You pass it an initial value, and it returns a store:
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+
+const store = create({ count: 0 });
+```
+
+You can pass **anything** as the initial state: objects, arrays, maps, primitives, even functions. The store provides three core methods to interact with your state:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+
+const store = create({ count: 0 });
+// ---cut---
+store.
+//    ^|
+‎
+‎
+```
+
+- `get()` - Get the current state
+- `set(nextState)` - Update the state
+- `subscribe(listener)` - Listen to state changes
+
+The `get` method also has an `initial` property that returns the initial state:
+
+## Basic usage
+
+### Reading state
+
+Use `get()` to read the current state at any time. Use `get.initial()` to read the initial state.
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+
+const store = create({ user: "Alice", count: 42 });
+
+const state = store.get(); // [!code hl]
+console.log(state);
+// @log: { user: "Alice", count: 42 }
+
+const initial = store.get.initial(); // [!code hl]
+console.log(initial);
+// @log: { user: "Alice", count: 42 }
+```
+
+### Updating state
+
+Use `set()` to update the state. You can pass either a new state value directly, or an updater function that receives the current state:
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+
+const store = create({ count: 0 });
+
+// Direct update
+store.set({ count: 5 }); // [!code hl]
+
+// Functional update
+store.set(state => ({ count: state.count + 1 })); // [!code hl]
+console.log(store.get());
+// @log: { count: 6 }
+```
+
+### Subscribing to changes
+
+Use `subscribe()` to listen for state changes. The listener receives both the new state and the previous state:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+‎
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+
+const store = create({ count: 0 });
+
+const unsubscribe = store.subscribe((state, previous) => { // [!code hl]
+  console.log(`Count changed from ${previous.count} to ${state.count}`); // [!code hl]
+}); // [!code hl]
+
+store.set({ count: 1 });
+// @log: Count changed from 0 to 1
+
+store.set({ count: 2 });
+// @log: Count changed from 1 to 2
+
+// Stop listening
+unsubscribe(); // [!code hl]
+```
+
+## Handlers
+
+Handlers are custom methods that you can add to your store. They're useful for encapsulating common operations, creating computed values, or providing a cleaner API for state updates. Pass them as the second argument to `create`:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+import { create } from "stav";
+// ---cut---
+const store = create(
+  { count: 0 },
+  {
+    getDouble: () => store.get().count * 2, // [!code hl]
+    increment: () => store.set(state => ({ count: state.count + 1 })), // [!code hl]
+    decrement: () => store.set(state => ({ count: state.count - 1 })), // [!code hl]
+  }
+);
+
+store.
+//    ^|
+‎
+‎
+‎
+‎
+
+store.increment();
+//    ^^^^^^^^^
+console.log(store.get());
+// @log: { count: 1 }
+
+console.log(store.getDouble());
+//                ^^^^^^^^^
+// @log: 2
+
+store.decrement();
+//    ^^^^^^^^^
+console.log(store.get());
+// @log: { count: 0 }
+```
+
+import { Callout } from "vocs/components";
+
+<Callout type="info">
+  Handlers are first-class store methods that live alongside `get`, `set`, and
+  `subscribe`. Avoid naming them the same to prevent collisions.
+</Callout>
+
+### Composing handlers
+
+Because handlers use the store via closure, they can call other handlers. This enables any kind of composition you need:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+import { create } from "stav";
+// ---cut---
+const store = create(
+  { count: 1 },
+  {
+    getDouble: () => store.get().count * 2,
+    getDoublePlusOne: () => store.getDouble() + 1,
+    increment: () => store.set(state => ({ count: state.count + 1 })),
+    incrementTwice: () => {
+      store.increment();
+      store.increment();
+    }
+  }
+);
+
+console.log(store.getDoublePlusOne());
+// @log: 3
+
+store.incrementTwice();
+console.log(store.get());
+// @log: { count: 3 }
+```
+
+### Real-world example
+
+Here's a more practical example showing how handlers can create a clean API for a todo store:
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+import { create } from "stav";
+// ---cut---
+type Todo = { id: string; text: string; completed: boolean };
+
+const store = create([] as Todo[], {
+  addTodo: (text: string) =>
+    store.set(state => [
+      ...state,
+      { id: crypto.randomUUID(), text, completed: false }
+    ]),
+  toggleTodo: (id: string) =>
+    store.set(state =>
+      state.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    ),
+  removeTodo: (id: string) =>
+    store.set(state => state.filter(todo => todo.id !== id)),
+  getActiveTodos: () => store.get().filter(todo => !todo.completed),
+  getCompletedTodos: () => store.get().filter(todo => todo.completed)
+});
+
+store.addTodo("Buy groceries");
+store.addTodo("Walk the dog");
+console.log(store.getActiveTodos().length);
+// @log: 2
+```
+
+## Equality function
+
+By default, Stav uses `Object.is` to determine if the state has changed. You can customize this behavior by passing an equality function as the third argument to `create`. This function is called every time `set()` is invoked:
+
+- If it returns `true` (states are equal), the state is **not** updated and listeners are **not** notified
+- If it returns `false` (states are different), the state is updated and listeners are notified
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { shallow } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { create, shallow } from "stav";
+//               ^^^^^^^
+
+const store = create(
+  { user: "Alice", todos: [] },
+  { setUser: (user: string) => store.set(s => ({ ...s, user })) },
+  shallow // [!code ++]
+);
+‎
+store.subscribe(() => console.log("State changed"));
+
+store.setUser("Alice");
+// Doesn't log anything, state didn't change
+
+store.setUser("Bob");
+// @log: State changed
+```
+
+### Built-in equality functions
+
+Stav provides two equality function utilities:
+
+- **`shallow`** - Performs shallow equality comparison (compares object properties one level deep)
+- **`deep`** - Performs deep equality comparison (recursively compares nested structures)
+
+<Callout type="warning">
+  When using `shallow` or `deep` equality, be aware that they may have
+  performance implications for large or deeply nested state objects. Use them
+  judiciously based on your use case.
+</Callout>
+
+More about utility functions: [Utilities](/docs/utilities)
+
+### Custom equality functions
+
+You can also provide your own equality function with the signature `(state: T, nextState: T) => boolean`:
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+
+import { create } from "stav";
+// ---cut---
+// Only consider count for equality, ignore timestamp
+const store = create(
+  { count: 0, timestamp: Date.now() },
+  {},
+  (a, b) => a.count === b.count // [!code ++]
+);
+
+store.subscribe(() => console.log("Count changed"));
+
+store.set({ count: 0, timestamp: Date.now() });
+// Doesn't log anything, count is still 0
+
+store.set({ count: 1, timestamp: Date.now() });
+// @log: Count changed
+```
+
+## Subscribe with selector
+
+Sometimes you only want to listen to changes in a specific part of the state. The `slice` utility function lets you subscribe to a slice of state and only get notified when that slice changes:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { slice } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { create, slice } from "stav";
+//               ^^^^^
+
+const store = create({ count: 0, todos: [] });
+‎
+const unsubscribe = store.subscribe(
+  slice( // [!code hl]
+    state => state.count, // [!code hl]
+    (count, previous) => { // [!code hl]
+      console.log("Count changed from", previous, "to", count); // [!code hl]
+    } // [!code hl]
+  ) // [!code hl]
+);
+```
+
+### Custom equality for slices
+
+`slice` accepts an optional third argument: an equality function to determine if the slice has changed. This is useful when your selector returns objects or arrays:
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { slice, shallow } from "../../src/utils";
+
+// @filename: index.ts
+// ---cut---
+import { create, slice, shallow } from "stav";
+
+type Todo = { id: number; text: string; completed: boolean };
+
+const store = create({ todos: [] as Todo[] });
+
+// Use shallow equality for the filtered array
+store.subscribe(
+  slice(
+    state => state.todos.filter(t => !t.completed),
+    activeTodos => {
+      console.log(`Active todos: ${activeTodos.length}`);
+    },
+    shallow // [!code ++]
+  )
+);
+```
+
+The equality function defaults to `Object.is`, which works well in most cases but may cause unnecessary notifications for objects and arrays.
+
+More about utility functions: [Utilities](/docs/utilities)
+
+## Store API
+
+### `create(initialState, handlers?, equalFn?)`
+
+Creates a new store.
+
+- **Parameters:**
+  - `initialState: T` - The initial state value (can be any type)
+  - `handlers?: H` - Optional object containing custom handler methods
+  - `equalFn?: (state: T, nextState: T) => boolean` - Optional equality function (defaults to `Object.is`)
+- **Returns:** `Store<T> & H` - A store with core methods and custom handlers
+
+### `Store<T>` object
+
+#### `get()`
+
+Get the current state.
+
+- **Returns:** `T` - The current state
+
+#### `get.initial()`
+
+Get the initial state that was passed to `create`.
+
+- **Returns:** `T` - The initial state
+
+#### `set(nextState)`
+
+Update the state.
+
+- **Parameters:**
+  - `nextState: T | ((state: T) => T)` - New state value or updater function
+- **Returns:** `void`
+
+#### `subscribe(listener, inherit?)`
+
+Subscribe to state changes.
+
+- **Parameters:**
+  - `listener: (state: T, previousState: T) => void` - Function called when state changes
+  - `inherit?: boolean` - Whether the subscription should be inherited in transactions (defaults to `false`)
+- **Returns:** `() => void` - Unsubscribe function

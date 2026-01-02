@@ -1,0 +1,162 @@
+# Middlewares
+
+Middlewares are functions that take a store as argument and return a upgraded store with additional properties and/or side-effects. You can think of them as higher-order stores. Middlewares come with their own import paths, so you only ever ship what you need.
+
+import { Callout } from "vocs/components";
+
+<Callout type="info">
+  Middlewares mutate the store directly, they don't create a new one.
+</Callout>
+
+## Additional methods
+
+Middlewares can add additional methods to a store. For example, in addition to the core methods (`get`, `set`, `subscribe`), the Redux middleware adds a `dispatch` method:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/redux.d.ts
+export { redux } from "../../src/middleware/redux";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { redux } from "stav/redux";
+
+const store = redux(create({ count: 0 }), (state, action) => {
+  switch (action.type) {
+    case "increment":
+      return { count: state.count + 1 };
+    case "decrement":
+      return { count: state.count - 1 };
+  }
+});
+
+store.
+//    ^|
+‎
+‎
+‎
+
+store.dispatch({ type: "increment" }); // [!code hl]
+```
+
+## Side-effects
+
+Middlewares can also add side-effects to the store. This is useful for things like logging, devtools, persistence, history tracking, etc. In the following example, the `persist` middleware will write to `localStorage` as a side-effect every time the state changes:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/persist.d.ts
+export { persist } from "../../src/middleware/persist";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { persist } from "stav/persist";
+
+const store = persist(create({ count: 0 }), {
+  key: "my-store",
+  version: 1
+});
+
+store.set({ count: 1 });
+
+console.log(localStorage.getItem("my-store"));
+// @log: [{ count: 1 }, 1]
+```
+
+## Nested stores
+
+Some stores like `persist` or `history` add nested stores as properties. This is because they need to store additional state besides the main store's state. For example, `history` needs to store the past and future states or diffs in order to support undo/redo. These nested stores can be accessed and used like any other store.
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/history.d.ts
+export { history } from "../../src/middleware/history";
+
+// @filename: node_modules/stav/react.d.ts
+export { useStore } from "../../src/middleware/react";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { history } from "stav/history";
+import { useStore } from "stav/react";
+
+const store = history(create({ count: 0 }));
+
+store.set({ count: 1 });
+console.log(store.history.get().past); // [!code hl]
+// @log: [{ count: 0 }]
+‎
+function History() {
+  const past = useStore(store.history, s => s.past); // [!code hl]
+  return /* ... */
+}
+```
+
+## Order of application
+
+For 99% of use cases, you can apply middlewares in any order. Middlewares that apply post-set side-effects (like `persist` or `history`) simply subscribe to the store internally and the effects are called when the state changes in the order they were applied.
+
+Likewise, middlewares that add methods on top of `set` (like `immer` or `object`) call `set` on the final store with all middlewares applied. So for example, the following two are interchangeable:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/immer.d.ts
+export { immer } from "../../src/middleware/immer";
+
+// @filename: node_modules/stav/preprocess.d.ts
+export { preprocess } from "../../src/middleware/preprocess";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { immer } from "stav/immer";
+import { preprocess } from "stav/preprocess";
+
+const store = immer(preprocess(create({ count: 0 })));
+const store = preprocess(immer(create({ count: 0 })));
+```
+
+In both cases, state changes done through immer will pass through preprocess.
+
+One situation where order matters is when you have two `preprocess` middlewares (for example one that validates, one that transforms). This is because validation and transforms might alter the pending state _before_ the store is updated. So depending on the order, you either validate the transformed state, or transform the validated state.
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/preprocess.d.ts
+export { preprocess } from "../../src/middleware/preprocess";
+
+// @filename: index.ts
+import { create } from "stav";
+import { preprocess } from "stav/preprocess";
+const transform = <T>(state: T) => state;
+const validate = <T>(state: T) => true;
+
+// ---cut---
+// Validation first
+const store = preprocess(preprocess(create({ count: 0 }), { transform }), {
+  validate
+});
+
+// Transform first
+const store = preprocess(preprocess(create({ count: 0 }), { validate }), {
+  transform
+});
+```

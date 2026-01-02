@@ -1,0 +1,286 @@
+# Usage with React
+
+Stav provides seamless React integration through hooks that let your components subscribe to store updates with automatic re-rendering. The integration is built on React's `useSyncExternalStore` hook. Update batching is handled automatically by React.
+
+## Basic usage
+
+The most convenient way to use stores in React is with the `react` middleware, which adds a `use` hook directly to your store:
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create } from "stav";
+import { react } from "stav/react"; // [!code ++]
+
+const store = react(
+  //          ^^^^^
+  create(
+    { count: 0 },
+    { increment: () => store.set(s => ({ count: s.count + 1 })) }
+  )
+);
+‎
+store.
+//    ^|
+‎
+‎
+‎
+‎
+
+function Counter() {
+  const count = store.use(state => state.count); // [!code hl]
+  return <button onClick={store.increment}>Increment {count}</button>;
+}
+```
+
+The component will automatically re-render whenever the selected slice of state changes.
+
+## Using useStore directly
+
+The `store.use` hook is a wrapper around the `useStore` hook. You can use `useStore` directly if you prefer not to use the middleware:
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { useStore } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create } from "stav";
+import { useStore } from "stav/react"; // [!code ++]
+
+const store = create({ name: "John", age: 30 });
+
+function Name() {
+  const name = useStore(store, state => state.name); // [!code hl]
+  return <div>{name}</div>;
+}
+```
+
+import { Callout } from "vocs/components";
+
+## Selecting state
+
+### With a selector
+
+Pass a selector function to extract and subscribe to a specific slice of the state.
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create } from "stav";
+import { react } from "stav/react";
+
+const store = react(
+  create({
+    user: { name: "John", email: "john@example.com" },
+    count: 0
+  })
+);
+
+function UserName() {
+  // Only re-renders when user.name changes
+  const name = store.use(state => state.user.name); // [!code hl]
+  return <div>{name}</div>;
+}
+```
+
+### Without a selector
+
+If you omit the selector, the hook returns and subscribes to the entire state:
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+import { create } from "stav";
+import { react } from "stav/react";
+// ---cut---
+const store = react(create({ name: "John", age: 30 }));
+
+function Person() {
+  const state = store.use(); // [!code hl]
+  return (
+    <div>
+      {state.name}, {state.age}
+    </div>
+  );
+}
+```
+
+### With an equality function
+
+When your selector returns a new object reference, for example when picking multiple values from an object or filtering an array, you must pass an equality function to prevent infinite re-renders. This is because React uses `Object.is` to compare the previous and next values, which returns `false` for different object references.
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { shallow, pick } from "../../src/utils";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create, pick, shallow } from "stav";
+//                     ^^^^^^^
+import { react } from "stav/react";
+
+const store = react(
+  create({
+    name: "John",
+    age: 30,
+    todos: [
+      {
+        id: 1,
+        title: "Go to the gym",
+        completed: false
+      }
+    ]
+  })
+);
+‎
+function Person() {
+  const person = store.use(pick("name", "age"), shallow); // [!code hl]
+  const activeTodos = store.use( // [!code hl]
+    state => state.todos.filter(todo => !todo.completed), // [!code hl]
+    shallow // [!code hl]
+  ); // [!code hl]
+  return (
+    <div>
+      {person.name}, {person.age}
+      {activeTodos.map(todo => (
+        <div key={todo.id}>{todo.title}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+<Callout type="info">
+  When you pass an equality function, Stav optimizes on top of React by
+  memoizing slices so that `useSyncExternalStore` sees the same object
+  references with `Object.is` for states considered equal.
+</Callout>
+
+## Server-side rendering
+
+Stav provides full support for server-side rendering (SSR). During SSR, the hook returns the initial state.
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { react } from "../../src/middleware/react";
+
+// @filename: index.ts
+import React from "react";
+
+import { create } from "stav";
+import { react } from "stav/react";
+
+const store = react(create({ count: 0 }));
+// ---cut---
+function Counter() {
+  // Works in both SSR and client-side rendering
+  const count = store.use(state => state.count);
+  return <div>{count}</div>;
+}
+```
+
+## Hydration checkpoint
+
+When using persistent stores (with `persist` or `asyncPersist` middleware), you may want to create a hydration checkpoint somewhere in your component tree to guarantee that all stores are hydrated before rendering further down the tree. The `useHydration` hook helps with this:
+
+```tsx twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/react.d.ts
+export { useHydration } from "../../src/middleware/react";
+
+// @filename: node_modules/stav/persist.d.ts
+export { persist } from "../../src/middleware/persist";
+
+// @filename: index.ts
+import React from "react";
+// ---cut---
+import { create } from "stav";
+import { persist } from "stav/persist";
+import { useHydration } from "stav/react";
+
+const userStore = persist(create({ name: "", email: "" }), { key: "user" });
+const settingsStore = persist(create({ theme: "light" }), { key: "settings" });
+
+function App() {
+  const hydrated = useHydration([userStore, settingsStore]); // [!code hl]
+  if (!hydrated) {
+    return <div>Loading...</div>;
+  }
+  return <Main />;
+}
+```
+
+<Callout type="info">
+  `useHydration` automatically calls `hydrate()` on any stores that haven't been
+  hydrated yet, and returns `true` once all stores are ready.
+</Callout>
+
+## React API
+
+### `react(store)`
+
+Middleware that adds a `use` hook to the store.
+
+- **Parameters:**
+  - `store: Store<T>` - The store to enhance
+- **Returns:** The same store with a `use` hook added
+
+### `useStore(store, selector?, equalFn?)`
+
+Hook to consume stores in React components.
+
+- **Parameters:**
+  - `store: Store<T>` - The store to subscribe to
+  - `selector?: (state: T) => U` - Optional function to select a slice of state (defaults to returning full state)
+  - `equalFn?: (a: U, b: U) => boolean` - Optional equality function to determine if the slice has changed (defaults to React's internal `Object.is` usage)
+- **Returns:** The selected slice of state
+
+### `useHydration(stores)`
+
+Hook to wait for persistent stores to hydrate before rendering. Calls `hydrate()` on any stores that haven't been hydrated yet.
+
+- **Parameters:**
+  - `stores: (PersistStore | AsyncPersistStore)[]` - Array of stores with persistence middleware
+- **Returns:** `boolean` - `true` when all stores are hydrated, `false` otherwise

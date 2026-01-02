@@ -1,10 +1,12 @@
 {
   "name": "stav",
   "version": "0.2.0",
-  "description": "Intuitive, extensible state management library",
+  "author": "strblr",
+  "license": "MIT",
+  "description": "The state manager you won’t fight with",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/src/index.d.ts",
@@ -26,8 +28,6 @@
     "useStore",
     "global"
   ],
-  "author": "strblr",
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/strblr/stav"
@@ -36,7 +36,10 @@
   "bugs": "https://github.com/strblr/stav/issues",
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "docs:dev": "vocs dev",
+    "docs:build": "vocs build",
+    "docs:preview": "vocs preview"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.0.11",
@@ -52,6 +55,7 @@
     "prettier": "^3.7.4",
     "react": "^19.2.3",
     "typescript": "^5.9.3",
+    "vocs": "^1.4.0",
     "zod": "^4.2.1"
   },
   "peerDependencies": {
