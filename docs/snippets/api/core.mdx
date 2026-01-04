@@ -32,11 +32,10 @@ Update the state.
   - `nextState: T | ((state: T) => T)` - New state value or updater function
 - **Returns:** `void`
 
-#### `subscribe(listener, inherit?)`
+#### `subscribe(listener)`
 
 Subscribe to state changes.
 
 - **Parameters:**
   - `listener: (state: T, previousState: T) => void` - Function called when state changes
-  - `inherit?: boolean` - Whether the subscription should be inherited in transactions (defaults to `false`)
 - **Returns:** `() => void` - Unsubscribe function

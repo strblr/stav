@@ -36,7 +36,7 @@ export function entangle<S extends Store<any>, S2 extends Store<any>>(
       sourceStore.subscribe(() => {
         if (syncing.get()) return;
         syncing.act(true, hydrate);
-      }, true)
+      })
     );
   }
 
@@ -47,7 +47,7 @@ export function entangle<S extends Store<any>, S2 extends Store<any>>(
         syncing.act(true, () =>
           sourceStore.set(() => set(state, sourceStore.get()))
         );
-      }, true)
+      })
     );
   }
 

@@ -1,7 +1,7 @@
 import type { Store, State } from "../create.js";
 import type { Versioned } from "./persist.js";
 import { create } from "./object.js";
-import { getTransaction, txConfig } from "../transaction.js";
+import { txIgnore } from "../transaction.js";
 import { type Assign, debounce } from "../utils.js";
 
 export interface AsyncPersistStore {
@@ -52,7 +52,7 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
     }
   } = options;
 
-  const persist = txConfig(
+  const persist = txIgnore(
     create(
       {
         hydrating: false,
@@ -61,7 +61,7 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
       },
       {
         hydrate: async () => {
-          if (!storage || persist.get().hydrating || getTransaction()) {
+          if (!storage || persist.get().hydrating) {
             return;
           }
           const success = () => {
@@ -95,8 +95,7 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
           debouncedPersist.cancel();
         }
       }
-    ),
-    { fork: false }
+    )
   );
 
   const asyncPersistStore: AsyncPersistStore = { persist };
@@ -115,7 +114,7 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
   }, delay);
 
   store.subscribe(state => {
-    if (!storage || persist.get().hydrating || getTransaction()) {
+    if (!storage || persist.get().hydrating) {
       return;
     }
     debouncedPersist(state);

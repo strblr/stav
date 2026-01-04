@@ -1,6 +1,6 @@
 import type { Store, State } from "../create.js";
 import { create } from "./object.js";
-import { getTransaction, txConfig } from "../transaction.js";
+import { txIgnore } from "../transaction.js";
 import type { Assign } from "../utils.js";
 
 export interface PersistStore {
@@ -51,7 +51,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     }
   } = options;
 
-  const persist = txConfig(
+  const persist = txIgnore(
     create(
       {
         hydrating: false,
@@ -59,7 +59,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
       },
       {
         hydrate: () => {
-          if (!storage || persist.get().hydrating || getTransaction()) {
+          if (!storage || persist.get().hydrating) {
             return;
           }
           const success = () => {
@@ -90,14 +90,13 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
           }
         }
       }
-    ),
-    { fork: false }
+    )
   );
 
   const persistStore: PersistStore = { persist };
 
   store.subscribe(state => {
-    if (!storage || persist.get().hydrating || getTransaction()) {
+    if (!storage || persist.get().hydrating) {
       return;
     }
     try {

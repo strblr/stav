@@ -3,7 +3,6 @@ import * as jsondiffpatch from "jsondiffpatch";
 import { create } from "../create";
 import { history, unchanged } from "./history";
 import { persist } from "./persist";
-import { transaction } from "../transaction";
 import { shallow } from "../utils";
 
 describe("history middleware", () => {
@@ -593,48 +592,6 @@ describe("integration", () => {
     expect(newStore.get()).toEqual({ count: 2 });
     expect(newStore.history.get().past).toHaveLength(2);
     expect(newStore.history.get().future).toHaveLength(1);
-  });
-
-  test("history tracks changes in transactions", () => {
-    const store = history(create({ count: 0 }));
-
-    transaction(() => {
-      store.set({ count: 1 });
-      store.set({ count: 2 });
-      expect(store.history.get().past).toHaveLength(2);
-
-      store.history.undo();
-      expect(store.get()).toEqual({ count: 1 });
-      expect(store.history.get().past).toHaveLength(1);
-
-      store.history.redo();
-      expect(store.get()).toEqual({ count: 2 });
-      expect(store.history.get().past).toHaveLength(2);
-    });
-  });
-
-  test("history store doesn't commit own changes after transaction", () => {
-    const store = history(create({ count: 0 }));
-
-    store.set({ count: 1 });
-    store.set({ count: 2 });
-    expect(store.get()).toEqual({ count: 2 });
-    expect(store.history.get().past).toHaveLength(2);
-
-    transaction(() => {
-      store.set({ count: 3 });
-      store.set({ count: 4 });
-      store.set({ count: 5 });
-      store.set({ count: 6 });
-      expect(store.history.get().past).toHaveLength(6);
-
-      store.history.undo();
-      expect(store.get()).toEqual({ count: 5 });
-      expect(store.history.get().past).toHaveLength(5);
-    });
-
-    expect(store.get()).toEqual({ count: 5 });
-    expect(store.history.get().past).toHaveLength(3);
   });
 });
 

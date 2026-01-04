@@ -1,13 +1,10 @@
-import { getInternals, type Internals } from "./internals.js";
-import { type Assign } from "./utils.js";
+import { notifyCheckpoint } from "./transaction.js";
+import type { Assign } from "./utils.js";
 
 export interface Store<T> {
-  get: {
-    (): T;
-    initial: () => T;
-  };
+  get: { (): T; initial: () => T };
   set: (nextState: StoreUpdater<T>) => void;
-  subscribe: (listener: StoreListener<T>, inherit?: boolean) => () => void;
+  subscribe: (listener: StoreListener<T>) => () => void;
 }
 
 export function create<T, H extends object = {}>(
@@ -15,31 +12,28 @@ export function create<T, H extends object = {}>(
   handlers = {} as H,
   equalFn: EqualFn<T> = Object.is
 ): Assign<Store<T>, H> {
-  const internals: Internals<T> = {
-    state: initialState,
-    listeners: new Map()
-  };
+  let state = initialState;
+  const listeners = new Set<StoreListener<T>>();
 
   const store: Store<T> = {
-    get: Object.assign(() => getInternals(store, internals).state, {
+    get: Object.assign(() => state, {
       initial: () => initialState
     }),
     set: nextState => {
-      const current = getInternals(store, internals);
-      const { state, listeners } = current;
       nextState =
         typeof nextState === "function"
           ? (nextState as (state: T) => T)(state)
           : nextState;
       if (equalFn(state, nextState)) return;
-      current.state = nextState;
+      const previousState = state;
+      state = nextState;
+      notifyCheckpoint(store);
       for (const listener of listeners.keys()) {
-        listener(nextState, state);
+        listener(state, previousState);
       }
     },
-    subscribe: (listener, inherit = false) => {
-      const { listeners } = getInternals(store, internals);
-      listeners.set(listener, inherit);
+    subscribe: listener => {
+      listeners.add(listener);
       return () => {
         listeners.delete(listener);
       };

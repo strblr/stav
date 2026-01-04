@@ -1,62 +1,52 @@
 import type { Store } from "./create.js";
-import { nocommit, nofork, type Internals } from "./internals.js";
 import { createScope } from "./utils.js";
 
-export interface Transaction {
-  readonly parent: Transaction | null;
-  readonly forks: Map<Store<any>, Internals<any>>;
-  act: <T>(fn: () => T) => T;
-  commit: () => void;
+interface Transaction {
+  parent: Transaction | null;
+  checkpoint: Map<Store<any>, any>;
 }
 
 const scope = createScope<Transaction | null>(null);
+const ignoretx = Symbol("ignoretx");
 
-export function getTransaction() {
-  return scope.get();
-}
-
-export function createTransaction(parent = getTransaction()) {
+export function transaction<T>(fn: (act: <U>(fn: () => U) => U) => T): T {
   const tx: Transaction = {
-    parent,
-    forks: new Map(),
-    act: fn => scope.act(tx, fn),
-    commit: () => {
-      scope.act(parent, () => {
-        tx.forks.forEach((internals, store) => {
-          if (!Object.hasOwn(store, nocommit)) {
-            store.set(() => internals.state);
-          }
-        });
-      });
-    }
+    parent: scope.get(),
+    checkpoint: new Map()
   };
-  return tx;
-}
-
-export function transaction<T>(fn: (act: Transaction["act"]) => T): T {
-  const tx = createTransaction();
-  const result = tx.act(() => fn(tx.act));
-  if (!(result instanceof Promise)) {
-    tx.commit();
+  const act = <U>(fn: () => U) => scope.act(tx, fn);
+  const revert = () => {
+    scope.act(tx.parent, () => {
+      for (const [store, state] of tx.checkpoint) {
+        store.set(state);
+      }
+    });
+  };
+  try {
+    const result = act(() => fn(act));
+    if (result instanceof Promise) {
+      return result.catch(error => {
+        revert();
+        throw error;
+      }) as T;
+    }
     return result;
-  } else {
-    return result.then(result => {
-      tx.commit();
-      return result;
-    }) as T;
+  } catch (error) {
+    revert();
+    throw error;
   }
 }
 
-export function txConfig<S extends Store<any>>(
-  store: S,
-  options: { fork?: boolean; commit?: boolean }
-) {
-  const { fork = true, commit = true } = options;
-  if (!fork) {
-    Object.assign(store, { [nofork]: true });
+export function notifyCheckpoint(store: Store<any>) {
+  if (Object.hasOwn(store, ignoretx)) {
+    return;
   }
-  if (!commit) {
-    Object.assign(store, { [nocommit]: true });
+  for (let tx = scope.get(); tx && !tx.checkpoint.has(store); tx = tx.parent) {
+    tx.checkpoint.set(store, store.get());
   }
+}
+
+export function txIgnore<S extends Store<any>>(store: S) {
+  Object.assign(store, { [ignoretx]: true });
   return store;
 }

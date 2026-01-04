@@ -2,7 +2,6 @@ import { test, expect, mock, describe } from "bun:test";
 import { create } from "../create";
 import { persist } from "./async-persist";
 import { immer } from "./immer";
-import { transaction } from "../transaction";
 import { shallow, slice } from "../utils";
 
 describe("async-persist middleware", () => {
@@ -88,36 +87,6 @@ describe("persist on state change", () => {
     await store.persist.hydrate();
     await sleep(10);
     expect(storage.setItem).not.toHaveBeenCalled();
-  });
-
-  test("does not persist during transaction", async () => {
-    const storage = createMockAsyncStorage();
-    const store = persist(create({ count: 0 }), {
-      storage,
-      autoHydrate: false
-    });
-
-    storage.setItem = mock(async (key, value) => {
-      await sleep(1);
-      storage.data.set(key, value);
-    });
-
-    await transaction(async act => {
-      act(() => {
-        store.set({ count: 1 });
-        store.set({ count: 2 });
-        store.set({ count: 3 });
-      });
-      await sleep(10);
-      expect(storage.setItem).not.toHaveBeenCalled();
-    });
-
-    await sleep(10);
-    expect(storage.setItem).toHaveBeenCalledTimes(1);
-    expect(await storage.getItem("stav/async-persist")).toEqual([
-      { count: 3 },
-      1
-    ]);
   });
 
   test("handles persist errors gracefully", async () => {

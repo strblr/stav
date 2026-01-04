@@ -1,6 +1,5 @@
 import type { State, Store } from "../create.js";
 import { create } from "./object.js";
-import { txConfig } from "../transaction.js";
 import { type Assign, createScope } from "../utils.js";
 
 export interface HistoryStore<D> {
@@ -40,53 +39,49 @@ export function history<S extends Store<any>, D = State<S>>(
 
   const tracking = createScope(true);
 
-  const history = txConfig(
-    create(
-      {
-        tracking: true,
-        past: [] as D[],
-        future: [] as D[]
+  const history = create(
+    {
+      tracking: true,
+      past: [] as D[],
+      future: [] as D[]
+    },
+    {
+      undo: () => {
+        const { past } = history.get();
+        if (past.length === 0) return;
+        const [delta, ...rest] = past;
+        const state = store.get();
+        const nextState = patch(state, delta);
+        const futureDelta = diff(nextState, state);
+        tracking.act(false, () => store.set(nextState));
+        history.assign(({ future }) => ({
+          past: rest,
+          future: futureDelta !== unchanged ? [futureDelta, ...future] : future
+        }));
       },
-      {
-        undo: () => {
-          const { past } = history.get();
-          if (past.length === 0) return;
-          const [delta, ...rest] = past;
-          const state = store.get();
-          const nextState = patch(state, delta);
-          const futureDelta = diff(nextState, state);
-          tracking.act(false, () => store.set(nextState));
-          history.assign(({ future }) => ({
-            past: rest,
-            future:
-              futureDelta !== unchanged ? [futureDelta, ...future] : future
-          }));
-        },
-        redo: () => {
-          const { future } = history.get();
-          if (future.length === 0) return;
-          const [delta, ...rest] = future;
-          const state = store.get();
-          const nextState = patch(state, delta);
-          const pastDelta = diff(nextState, state);
-          tracking.act(false, () => store.set(nextState));
-          history.assign(({ past }) => ({
-            past: pastDelta !== unchanged ? [pastDelta, ...past] : past,
-            future: rest
-          }));
-        },
-        clear: () => {
-          history.assign({ past: [], future: [] });
-        },
-        startTracking: () => {
-          history.assign({ tracking: true });
-        },
-        stopTracking: () => {
-          history.assign({ tracking: false });
-        }
+      redo: () => {
+        const { future } = history.get();
+        if (future.length === 0) return;
+        const [delta, ...rest] = future;
+        const state = store.get();
+        const nextState = patch(state, delta);
+        const pastDelta = diff(nextState, state);
+        tracking.act(false, () => store.set(nextState));
+        history.assign(({ past }) => ({
+          past: pastDelta !== unchanged ? [pastDelta, ...past] : past,
+          future: rest
+        }));
+      },
+      clear: () => {
+        history.assign({ past: [], future: [] });
+      },
+      startTracking: () => {
+        history.assign({ tracking: true });
+      },
+      stopTracking: () => {
+        history.assign({ tracking: false });
       }
-    ),
-    { commit: false }
+    }
   );
 
   const historyStore: HistoryStore<D> = { history };
@@ -101,7 +96,7 @@ export function history<S extends Store<any>, D = State<S>>(
       past: [delta, ...past].slice(0, limit),
       future: []
     }));
-  }, true);
+  });
 
   return Object.assign(store, historyStore);
 }

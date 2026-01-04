@@ -2,7 +2,6 @@ import { test, expect, mock, describe } from "bun:test";
 import { create } from "../create";
 import { persist } from "./persist";
 import { immer } from "./immer";
-import { transaction } from "../transaction";
 import { shallow, slice } from "../utils";
 
 describe("persist middleware", () => {
@@ -82,27 +81,6 @@ describe("persist on state change", () => {
 
     store.persist.hydrate();
     expect(storage.setItem).not.toHaveBeenCalled();
-  });
-
-  test("does not persist during transaction", () => {
-    const storage = createMockStorage();
-    const store = persist(create({ count: 0 }), { storage });
-
-    storage.setItem = mock((key, value) => {
-      storage.data.set(key, value);
-    });
-
-    transaction(() => {
-      store.set({ count: 1 });
-      store.set({ count: 2 });
-      store.set({ count: 3 });
-      expect(storage.setItem).not.toHaveBeenCalled();
-    });
-
-    expect(storage.setItem).toHaveBeenCalledTimes(1);
-    expect(storage.getItem("stav/persist")).toBe(
-      JSON.stringify([{ count: 3 }, 1])
-    );
   });
 
   test("handles persist errors gracefully", () => {
