@@ -37,7 +37,7 @@ export function transaction<T>(fn: (act: <U>(fn: () => U) => U) => T): T {
   }
 }
 
-export function notifyCheckpoint(store: Store<any>) {
+export function checkpoint(store: Store<any>) {
   if (Object.hasOwn(store, ignoretx)) {
     return;
   }
