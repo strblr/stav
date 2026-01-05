@@ -143,26 +143,16 @@ import { create, transaction } from "stav";
 
 const store = create({ count: 0 });
 
-transaction(() => {
-  // Either all or none pass
-  store.set({ count: 1 });
-  store.set({ count: 2 });
-  store.set({ count: 3 });
-});
+await transaction(async () => {
+  store.set({ count: 4 });
+  store.set({ count: 5 });
+  console.log(store.get());
+  // @log: { count: 5 }
+  throw new Error();
+}, [store]).catch(() => {});
 
 console.log(store.get());
-// @log: { count: 3 }
-
-try {
-  transaction(() => {
-    store.set({ count: 4 });
-    store.set({ count: 5 });
-    throw new Error();
-  });
-} catch {}
-
-console.log(store.get());
-// @log: { count: 3 }
+// @log: { count: 0 }
 ```
 
 :::
