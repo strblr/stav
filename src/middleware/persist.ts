@@ -15,6 +15,7 @@ export interface PersistOptions<T, P, R> {
   key?: string;
   version?: number;
   autoHydrate?: boolean;
+  syncTabs?: boolean;
   storage?: StorageLike<R> | null;
   partialize?: (state: T) => P;
   serialize?: (partialized: Versioned<P>) => R;
@@ -37,6 +38,7 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     key = "stav/persist",
     version = 1,
     autoHydrate = true,
+    syncTabs = true,
     storage = typeof window !== "undefined"
       ? (window.localStorage as Default<"storage">)
       : null,
@@ -106,6 +108,18 @@ export function persist<S extends Store<any>, P = State<S>, R = string>(
     try {
       persist.hydrate();
     } catch {}
+  }
+
+  if (syncTabs && typeof window !== "undefined" && storage) {
+    window.addEventListener("storage", event => {
+      if (
+        event.key === key &&
+        event.newValue !== null &&
+        event.storageArea === storage
+      ) {
+        persist.hydrate();
+      }
+    });
   }
 
   return Object.assign(store, persistStore);
