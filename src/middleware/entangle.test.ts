@@ -355,7 +355,7 @@ describe("integration", () => {
       expect(storeA.get()).toBe(5);
       storeA.set(10);
       expect(storeB.get()).toBe(10);
-    });
+    }, [storeA, storeB]);
 
     expect(storeB.get()).toBe(10);
     expect(storeA.get()).toBe(10);

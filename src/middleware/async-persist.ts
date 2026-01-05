@@ -1,7 +1,6 @@
 import type { Store, State } from "../create.js";
 import type { Versioned } from "./persist.js";
 import { create } from "./object.js";
-import { txIgnore } from "../transaction.js";
 import { type Assign, debounce } from "../utils.js";
 
 export interface AsyncPersistStore {
@@ -52,50 +51,48 @@ export function persist<S extends Store<any>, P = State<S>, R = Versioned<P>>(
     }
   } = options;
 
-  const persist = txIgnore(
-    create(
-      {
-        hydrating: false,
-        hydrated: false,
-        persisting: false
-      },
-      {
-        hydrate: async () => {
-          if (!storage || persist.get().hydrating) {
-            return;
+  const persist = create(
+    {
+      hydrating: false,
+      hydrated: false,
+      persisting: false
+    },
+    {
+      hydrate: async () => {
+        if (!storage || persist.get().hydrating) {
+          return;
+        }
+        const success = () => {
+          persist.assign({ hydrated: true });
+        };
+        try {
+          persist.assign({ hydrating: true });
+          const serialized = await storage.getItem(key);
+          if (serialized === null) {
+            return success();
           }
-          const success = () => {
-            persist.assign({ hydrated: true });
-          };
-          try {
-            persist.assign({ hydrating: true });
-            const serialized = await storage.getItem(key);
-            if (serialized === null) {
+          let [partialized, storedVersion] = deserialize(serialized);
+          if (storedVersion !== version) {
+            if (!migrate) {
               return success();
             }
-            let [partialized, storedVersion] = deserialize(serialized);
-            if (storedVersion !== version) {
-              if (!migrate) {
-                return success();
-              }
-              partialized = await migrate(partialized, storedVersion);
-            }
-            const state = store.get();
-            const nextState = merge(partialized, state);
-            store.set(nextState);
-            success();
-          } catch (error) {
-            onError(error, "hydrate");
-            throw error;
-          } finally {
-            persist.assign({ hydrating: false });
+            partialized = await migrate(partialized, storedVersion);
           }
-        },
-        cancelPersist: () => {
-          debouncedPersist.cancel();
+          const state = store.get();
+          const nextState = merge(partialized, state);
+          store.set(nextState);
+          success();
+        } catch (error) {
+          onError(error, "hydrate");
+          throw error;
+        } finally {
+          persist.assign({ hydrating: false });
         }
+      },
+      cancelPersist: () => {
+        debouncedPersist.cancel();
       }
-    )
+    }
   );
 
   const asyncPersistStore: AsyncPersistStore = { persist };

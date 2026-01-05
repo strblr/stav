@@ -1,4 +1,3 @@
-import { checkpoint } from "./transaction.js";
 import type { Assign } from "./utils.js";
 
 export interface Store<T> {
@@ -25,7 +24,6 @@ export function create<T, H extends object = {}>(
           ? (nextState as (state: T) => T)(state)
           : nextState;
       if (equalFn(state, nextState)) return;
-      checkpoint(store);
       const previousState = state;
       state = nextState;
       for (const listener of listeners.keys()) {

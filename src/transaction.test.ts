@@ -1,404 +1,164 @@
-import { test, expect, mock, describe } from "bun:test";
-import { create } from "./create";
-import { transaction, txIgnore } from "./transaction";
+import { describe, test, expect } from "bun:test";
+import { create } from "./create.js";
+import { transaction } from "./transaction.js";
 
-describe("transaction", () => {
-  test("returns result of transaction function", () => {
-    const result = transaction(() => "test");
-    expect(result).toBe("test");
+describe("transaction synchronous", () => {
+  test("keeps changes when function succeeds", () => {
+    const store1 = create(0);
+    const store2 = create("initial");
+
+    const result = transaction(() => {
+      store1.set(10);
+      store2.set("updated");
+      return "success";
+    }, [store1, store2]);
+
+    expect(result).toBe("success");
+    expect(store1.get()).toBe(10);
+    expect(store2.get()).toBe("updated");
   });
 
-  test("updates state in transaction", () => {
-    const store = create({ count: 0 });
-
-    transaction(() => {
-      store.set({ count: 1 });
-      expect(store.get()).toEqual({ count: 1 });
-      store.set({ count: 2 });
-      expect(store.get()).toEqual({ count: 2 });
-    });
-
-    expect(store.get()).toEqual({ count: 2 });
-  });
-
-  test("reverts changes on error", () => {
-    const store = create({ count: 0 });
-    store.set({ count: 1 });
-
-    try {
-      transaction(() => {
-        store.set({ count: 2 });
-        store.set({ count: 3 });
-        expect(store.get()).toEqual({ count: 3 });
-        throw new Error("rollback");
-      });
-    } catch {}
-
-    expect(store.get()).toEqual({ count: 1 });
-  });
-
-  test("reverts all stores in transaction on error", () => {
-    const store1 = create({ count: 0 });
-    const store2 = create({ value: "a" });
-
-    try {
-      transaction(() => {
-        store1.set({ count: 5 });
-        store2.set({ value: "b" });
-        throw new Error("rollback");
-      });
-    } catch {}
-
-    expect(store1.get()).toEqual({ count: 0 });
-    expect(store2.get()).toEqual({ value: "a" });
-  });
-
-  test("rethrows error after rollback", () => {
-    const store = create({ count: 0 });
+  test("reverts changes when function throws", () => {
+    const store1 = create(0);
+    const store2 = create("initial");
 
     expect(() => {
       transaction(() => {
-        store.set({ count: 1 });
-        throw new Error("test error");
-      });
-    }).toThrow("test error");
-  });
-});
+        store1.set(10);
+        store2.set("updated");
+        throw new Error("rollback");
+      }, [store1, store2]);
+    }).toThrow("rollback");
 
-describe("nested transactions", () => {
-  test("inner transaction creates new checkpoint", () => {
-    const store = create({ count: 0 });
-
-    transaction(() => {
-      store.set({ count: 1 });
-      expect(store.get()).toEqual({ count: 1 });
-
-      try {
-        transaction(() => {
-          store.set({ count: 2 });
-          store.set({ count: 3 });
-          expect(store.get()).toEqual({ count: 3 });
-          throw new Error("inner rollback");
-        });
-      } catch {}
-
-      expect(store.get()).toEqual({ count: 1 });
-    });
-
-    expect(store.get()).toEqual({ count: 1 });
+    expect(store1.get()).toBe(0);
+    expect(store2.get()).toBe("initial");
   });
 
-  test("outer transaction rollback includes all nested changes", () => {
+  test("handles single store", () => {
     const store = create({ count: 0 });
 
-    try {
-      transaction(() => {
-        store.set({ count: 1 });
-        transaction(() => {
-          store.set({ count: 2 });
-        });
-        expect(store.get()).toEqual({ count: 2 });
-        store.set({ count: 3 });
-        expect(store.get()).toEqual({ count: 3 });
-        throw new Error("outer rollback");
-      });
-    } catch {}
-
-    expect(store.get()).toEqual({ count: 0 });
-  });
-
-  test("multiple nested transactions", () => {
-    const store = create({ count: 0 });
-
-    transaction(() => {
-      store.set({ count: 1 });
-      transaction(() => {
-        store.set({ count: 2 });
-        transaction(() => {
-          store.set({ count: 3 });
-        });
-      });
-    });
-
-    expect(store.get()).toEqual({ count: 3 });
-  });
-
-  test("nested transaction rollback doesn't affect parent", () => {
-    const store = create({ count: 0 });
-
-    transaction(() => {
-      store.set({ count: 1 });
-
-      try {
-        transaction(() => {
-          store.set({ count: 2 });
-          throw new Error("inner error");
-        });
-      } catch {}
-
-      expect(store.get()).toEqual({ count: 1 });
+    const result = transaction(() => {
       store.set({ count: 5 });
-    });
+      return 42;
+    }, [store]);
 
+    expect(result).toBe(42);
     expect(store.get()).toEqual({ count: 5 });
   });
 
-  test("deeply nested transactions with mixed rollback", () => {
-    const store = create({ count: 0 });
-
-    try {
-      transaction(() => {
-        store.set({ count: 1 });
-
-        transaction(() => {
-          store.set({ count: 2 });
-
-          try {
-            transaction(() => {
-              store.set({ count: 3 });
-              throw new Error("innermost error");
-            });
-          } catch {}
-
-          expect(store.get()).toEqual({ count: 2 });
-          store.set({ count: 4 });
-        });
-
-        expect(store.get()).toEqual({ count: 4 });
-        throw new Error("test error");
-      });
-    } catch {}
-
-    expect(store.get()).toEqual({ count: 0 });
+  test("handles empty store array", () => {
+    const result = transaction(() => "done", []);
+    expect(result).toBe("done");
   });
 });
 
-describe("async transactions", () => {
-  test("returns promise for async transaction", async () => {
-    const store = create({ count: 0 });
+describe("transaction asynchronous", () => {
+  test("commits changes when async function resolves", async () => {
+    const store1 = create(0);
+    const store2 = create("initial");
 
-    const result = transaction(async () => {
-      store.set({ count: 1 });
-      return "async result";
-    });
-
-    expect(result).toBeInstanceOf(Promise);
-    expect(await result).toBe("async result");
-  });
-
-  test("updates state in async transaction", async () => {
-    const store = create({ count: 0 });
-
-    await transaction(async () => {
-      store.set({ count: 1 });
+    const result = await transaction(async () => {
+      store1.set(10);
       await Promise.resolve();
-      store.set({ count: 2 });
-    });
+      store2.set("updated");
+      return "async success";
+    }, [store1, store2]);
 
-    expect(store.get()).toEqual({ count: 2 });
+    expect(result).toBe("async success");
+    expect(store1.get()).toBe(10);
+    expect(store2.get()).toBe("updated");
   });
 
-  test("reverts async transaction on error", async () => {
-    const store = create({ count: 0 });
-
-    await transaction(async () => {
-      store.set({ count: 1 });
-      await Promise.resolve();
-      store.set({ count: 2 });
-      expect(store.get()).toEqual({ count: 2 });
-      throw new Error("async error");
-    }).catch(() => {});
-
-    expect(store.get()).toEqual({ count: 0 });
-  });
-
-  test("rethrows error after async rollback", async () => {
-    const store = create({ count: 0 });
+  test("reverts changes when async function rejects", async () => {
+    const store1 = create(0);
+    const store2 = create("initial");
 
     await expect(
       transaction(async () => {
-        store.set({ count: 1 });
-        throw new Error("async test error");
-      })
-    ).rejects.toThrow("async test error");
+        store1.set(10);
+        await Promise.resolve();
+        store2.set("updated");
+        throw new Error("async rollback");
+      }, [store1, store2])
+    ).rejects.toThrow("async rollback");
+
+    expect(store1.get()).toBe(0);
+    expect(store2.get()).toBe("initial");
   });
 
-  test("async transaction with multiple stores", async () => {
-    const store1 = create({ count: 0 });
-    const store2 = create({ value: "a" });
+  test("handles delayed rejection", async () => {
+    const store1 = create(5);
+    const store2 = create(10);
 
-    await transaction(async () => {
-      store1.set({ count: 5 });
-      store2.set({ value: "b" });
+    await expect(
+      transaction(async () => {
+        store1.set(50);
+        await new Promise(resolve => setTimeout(resolve, 10));
+        store2.set(100);
+        await new Promise(resolve => setTimeout(resolve, 10));
+        throw new Error("delayed error");
+      }, [store1, store2])
+    ).rejects.toThrow("delayed error");
+
+    expect(store1.get()).toBe(5);
+    expect(store2.get()).toBe(10);
+  });
+
+  test("preserves async error", async () => {
+    const store = create(0);
+    const error = new Error("async custom error");
+
+    try {
+      await transaction(async () => {
+        store.set(10);
+        throw error;
+      }, [store]);
+    } catch (e) {
+      expect(e).toBe(error);
+    }
+  });
+
+  test("returns promise that resolves correctly", async () => {
+    const store = create(0);
+
+    const promise = transaction(async () => {
+      store.set(5);
       await Promise.resolve();
-      throw new Error("rollback both");
-    }).catch(() => {});
+      return { data: "result" };
+    }, [store]);
 
-    expect(store1.get()).toEqual({ count: 0 });
-    expect(store2.get()).toEqual({ value: "a" });
-  });
-
-  test("nested async transactions", async () => {
-    const store = create({ count: 0 });
-
-    await transaction(async () => {
-      store.set({ count: 1 });
-
-      await transaction(async () => {
-        store.set({ count: 2 });
-        await Promise.resolve();
-        store.set({ count: 3 });
-      });
-
-      store.set({ count: 4 });
-    });
-
-    expect(store.get()).toEqual({ count: 4 });
-  });
-
-  test("inner async transaction rollback doesn't affect outer", async () => {
-    const store = create({ count: 0 });
-
-    await transaction(async () => {
-      store.set({ count: 1 });
-
-      await transaction(async () => {
-        store.set({ count: 2 });
-        await Promise.resolve();
-        throw new Error("inner error");
-      }).catch(() => {});
-
-      expect(store.get()).toEqual({ count: 1 });
-      store.set({ count: 5 });
-    });
-
-    expect(store.get()).toEqual({ count: 5 });
+    expect(promise).toBeInstanceOf(Promise);
+    const result = await promise;
+    expect(result).toEqual({ data: "result" });
+    expect(store.get()).toBe(5);
   });
 });
 
-describe("txIgnore", () => {
-  test("marks store to ignore transactions", () => {
-    const store = create({ count: 0 });
-    const ignoredStore = txIgnore(store);
-    expect(ignoredStore).toBe(store);
-  });
-
-  test("ignored store changes persist even on rollback", () => {
-    const normalStore = create({ count: 0 });
-    const ignoredStore = txIgnore(create({ value: 0 }));
-
-    try {
-      transaction(() => {
-        normalStore.set({ count: 5 });
-        ignoredStore.set({ value: 10 });
-        throw new Error("rollback");
-      });
-    } catch {}
-
-    expect(normalStore.get()).toEqual({ count: 0 });
-    expect(ignoredStore.get()).toEqual({ value: 10 });
-  });
-
-  test("ignored store works with nested transactions", () => {
-    const normalStore = create({ count: 0 });
-    const ignoredStore = txIgnore(create({ value: 0 }));
+describe("transaction edge cases", () => {
+  test("handles multiple updates to same store", () => {
+    const store = create(0);
 
     transaction(() => {
-      normalStore.set({ count: 1 });
-      ignoredStore.set({ value: 1 });
+      store.set(1);
+      store.set(2);
+      store.set(3);
+    }, [store]);
 
-      try {
-        transaction(() => {
-          normalStore.set({ count: 2 });
-          ignoredStore.set({ value: 2 });
-          throw new Error("inner rollback");
-        });
-      } catch {}
-
-      expect(normalStore.get()).toEqual({ count: 1 });
-      expect(ignoredStore.get()).toEqual({ value: 2 });
-    });
-
-    expect(normalStore.get()).toEqual({ count: 1 });
-    expect(ignoredStore.get()).toEqual({ value: 2 });
-  });
-});
-
-describe("edge cases", () => {
-  test("transaction with no store mutations", () => {
-    const store = create({ count: 0 });
-
-    transaction(() => {
-      const value = store.get();
-      expect(value).toEqual({ count: 0 });
-    });
-
-    expect(store.get()).toEqual({ count: 0 });
+    expect(store.get()).toBe(3);
   });
 
-  test("subscribers are notified inside transaction", () => {
-    const store = create({ count: 0 });
-    const listener = mock();
-    store.subscribe(listener);
+  test("reverts after multiple updates to same store", () => {
+    const store = create(0);
 
-    transaction(() => {
-      store.set({ count: 1 });
-      expect(listener).toHaveBeenCalledTimes(1);
-      store.set({ count: 2 });
-      expect(listener).toHaveBeenCalledTimes(2);
-    });
-
-    expect(listener).toHaveBeenCalledTimes(2);
-  });
-
-  test("subscribers are notified on rollback", () => {
-    const store = create({ count: 0 });
-    const listener = mock();
-    store.subscribe(listener);
-
-    try {
+    expect(() => {
       transaction(() => {
-        store.set({ count: 1 });
-        store.set({ count: 2 });
-        throw new Error("rollback");
-      });
-    } catch {}
+        store.set(1);
+        store.set(2);
+        store.set(3);
+        throw new Error("fail");
+      }, [store]);
+    }).toThrow("fail");
 
-    expect(listener).toHaveBeenCalledTimes(3);
-    expect(listener).toHaveBeenLastCalledWith({ count: 0 }, { count: 2 });
-  });
-
-  test("transaction with store that has handlers", () => {
-    const store = create(
-      { count: 0 },
-      { increment: () => store.set(s => ({ count: s.count + 1 })) }
-    );
-
-    try {
-      transaction(() => {
-        store.increment();
-        store.increment();
-        throw new Error("rollback");
-      });
-    } catch {}
-
-    expect(store.get()).toEqual({ count: 0 });
-  });
-
-  test("very deep nested transactions", () => {
-    const store = create({ count: 0 });
-
-    const createNestedTransaction = (depth: number): void => {
-      if (depth === 0) {
-        store.set({ count: store.get().count + 1 });
-        return;
-      }
-      transaction(() => {
-        createNestedTransaction(depth - 1);
-      });
-    };
-
-    createNestedTransaction(20);
-    expect(store.get()).toEqual({ count: 1 });
+    expect(store.get()).toBe(0);
   });
 });
