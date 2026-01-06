@@ -60,6 +60,21 @@ export function slice<T, U>(
   };
 }
 
+// assign
+
+export function assign<T extends object, U>(target: T, source: U) {
+  for (const key of [
+    ...Object.getOwnPropertyNames(source),
+    ...Object.getOwnPropertySymbols(source)
+  ]) {
+    const descriptor = Object.getOwnPropertyDescriptor(source, key);
+    if (descriptor?.enumerable) {
+      Object.defineProperty(target, key, descriptor);
+    }
+  }
+  return target as Assign<T, U>;
+}
+
 // debounce
 
 export function debounce<T extends any[]>(

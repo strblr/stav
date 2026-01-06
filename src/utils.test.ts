@@ -6,7 +6,8 @@ import {
   slice,
   createScope,
   deep,
-  debounce
+  debounce,
+  assign
 } from "./utils";
 
 describe("pick", () => {
@@ -282,6 +283,84 @@ describe("slice", () => {
     expect(callback).toHaveBeenCalledTimes(2);
     expect(callback).toHaveBeenNthCalledWith(1, "second", "first");
     expect(callback).toHaveBeenNthCalledWith(2, "third", "second");
+  });
+});
+
+describe("assign", () => {
+  test("preserves target object reference", () => {
+    const target = { a: 1 };
+    const source = { b: 2 };
+    const result = assign(target, source);
+    expect(result).toBe(target as any);
+  });
+
+  test("merges properties from source to target", () => {
+    const target = { a: 1, b: 2 };
+    const source = { b: 3, c: 4 };
+    const result = assign(target, source);
+    expect(result).toEqual({ a: 1, b: 3, c: 4 });
+  });
+
+  test("preserves getters", () => {
+    const target = { a: 42 };
+    const source = {
+      get b() {
+        return target.a;
+      }
+    };
+
+    const result = assign(target, source);
+    expect(result.b).toBe(42);
+    result.a = 999;
+    expect(result.b).toBe(999);
+  });
+
+  test("preserves setters", () => {
+    const target = { a: 1 };
+    const source = {
+      set b(newValue: number) {
+        target.a = newValue;
+      }
+    };
+
+    const result = assign(target, source);
+    expect(result.a).toBe(1);
+    result.b = 999;
+    expect(result.a).toBe(999);
+  });
+
+  test("works with empty source object", () => {
+    const target = { a: 1, b: 2 };
+    const source = {};
+    const result = assign(target, source);
+    expect(result).toBe(target);
+    expect(result).toEqual({ a: 1, b: 2 });
+  });
+
+  test("works with empty target object", () => {
+    const target = {};
+    const source = { a: 1, b: 2 };
+    const result = assign(target, source);
+    expect(result).toBe(target as any);
+    expect(result).toEqual({ a: 1, b: 2 });
+  });
+
+  test("handles symbol properties", () => {
+    const symbol = Symbol("symbol");
+    const target = { string: "hello" };
+    const source = {
+      number: 42,
+      [symbol]: "symbol value"
+    };
+
+    const result = assign(target, source);
+
+    expect(result).not.toBe(source);
+    expect(result).toEqual({
+      string: "hello",
+      number: 42,
+      [symbol]: "symbol value"
+    });
   });
 });
 
