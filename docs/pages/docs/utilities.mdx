@@ -325,7 +325,7 @@ console.log(greet());
 // @log: Hello, Alice!
 ```
 
-This is mainly used by Stav internally. For example, it is used to control transaction scopes, and to avoid middlewares from running their side-effects on their own updates, avoiding infinite loops.
+This is mainly used by Stav internally. For example, it is used to avoid middlewares from running their side-effects on their own updates, avoiding infinite loops.
 
 import UtilitiesApi from "../../snippets/api/utilities.mdx";
 

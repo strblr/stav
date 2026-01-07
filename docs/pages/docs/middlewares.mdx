@@ -172,6 +172,7 @@ const store = preprocess(preprocess(create({ count: 0 }), { validate }), {
 - [`preprocess`](/docs/middlewares/preprocess) - Validates and transforms the state before it is set.
 - [`redux`](/docs/middlewares/redux) - Adds support for the reducer pattern to the store.
 - [`devtools`](/docs/middlewares/devtools) - Adds support for the Redux DevTools extension.
-- [`entangle`](/docs/middlewares/entangle) - Entangles two stores together, syncing their state automatically.
+- [`sync`](/docs/middlewares/sync) - Syncs two stores together, syncing their state automatically.
+- [`lock`](/docs/middlewares/lock) - Locks the store to prevent updates.
 - [`ssr-safe`](/docs/middlewares/ssr-safe) - Prevents `set` from being called in SSR environments.
 - [`verbose`](/docs/middlewares/verbose) - Logs all state changes and subscriptions.

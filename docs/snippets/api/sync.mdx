@@ -1,0 +1,25 @@
+## Sync API
+
+### `sync(store, options)`
+
+Middleware that synchronizes the given store with another store.
+
+- **Parameters:**
+  - `store: Store<T>` - The store to sync
+  - `options: SyncOptions<Store<T>, Store<U>>` - Configuration object:
+    - `source: Store<U>` - The source store to synchronize with
+    - `get?: (sourceState: U, state: T) => T` - Optional: Transform source state to update the synced store
+    - `set?: (state: T, sourceState: U) => U` - Optional: Transform synced store state to update the source
+- **Returns:** The same store with an `unsync()` method added
+
+### `derive(source, options, equalFn?)`
+
+Creates a new store automatically synchronized with a source store. Built on top of the `sync` middleware.
+
+- **Parameters:**
+  - `source: Store<T>` - The source store to derive from
+  - `options: DeriveOptions<Store<T>, U>` - Configuration object:
+    - `get: (sourceState: T) => U` - Transform source state to derived state
+    - `set?: (state: U, sourceState: T) => T` - Optional: Transform derived state back to source state
+  - `equalFn?: (a: U, b: U) => boolean` - Optional equality function for the derived store (defaults to `Object.is`)
+- **Returns:** A new derived store with an `unsync()` method added

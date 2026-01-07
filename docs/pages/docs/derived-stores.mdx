@@ -1,0 +1,515 @@
+# Derived stores
+
+Derived stores let you create stores that automatically sync with other stores. They're perfect for managing related state that needs to stay in sync, creating computed views of your data, or connecting different parts of your application state.
+
+Stav provides two functions for working with derived stores:
+
+- **`sync`** - Middleware that synchronizes a store with another one
+- **`derive`** - Creates a new store derived from another store, based on `sync`
+
+## Basic usage
+
+The `derive` function creates a new store that's automatically synchronized with a source store. You define how to transform the source state into the derived state using a `get` function:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+‎
+// ---cut---
+import { create } from "stav";
+import { derive } from "stav/sync"; // [!code ++]
+
+const celsius = create(0);
+
+const fahrenheit = derive(celsius, { // [!code hl]
+  get: c => (c * 9) / 5 + 32 // [!code hl]
+}); // [!code hl]
+
+console.log(fahrenheit.get());
+// @log: 32
+
+celsius.set(100);
+console.log(fahrenheit.get());
+// @log: 212
+```
+
+The derived store automatically updates whenever the source store changes.
+
+## Bidirectional sync
+
+Add a `set` function to enable bidirectional synchronization. Changes to the derived store will update the source store:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { derive } from "stav/sync";
+
+const celsius = create(0);
+
+const fahrenheit = derive(celsius, {
+  get: c => (c * 9) / 5 + 32,
+  set: f => ((f - 32) * 5) / 9 // [!code ++]
+});
+
+fahrenheit.set(212);
+console.log(celsius.get());
+// @log: 100
+
+celsius.set(0);
+console.log(fahrenheit.get());
+// @log: 32
+```
+
+## Practical examples
+
+### Currency converter
+
+Create stores for different currencies that stay in sync:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { derive } from "stav/sync";
+
+const USD_TO_EUR = 0.92;
+const USD_TO_GBP = 0.79;
+
+const usd = create(100);
+
+const eur = derive(usd, {
+  get: amount => amount * USD_TO_EUR,
+  set: amount => amount / USD_TO_EUR
+});
+
+const gbp = derive(usd, {
+  get: amount => amount * USD_TO_GBP,
+  set: amount => amount / USD_TO_GBP
+});
+
+console.log(
+  `$${usd.get()} = €${eur.get().toFixed(2)} = £${gbp.get().toFixed(2)}`
+);
+// @log: $100 = €92.00 = £79.00
+
+eur.set(50);
+console.log(
+  `$${usd.get().toFixed(2)} = €${eur.get()} = £${gbp.get().toFixed(2)}`
+);
+// @log: $54.35 = €50 = £42.93
+```
+
+### Filtered view
+
+Create a derived store that filters data from a source store:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { shallow } from "../../src/utils";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create, shallow } from "stav";
+import { derive } from "stav/sync";
+
+type Todo = { id: number; text: string; completed: boolean };
+
+const todos = create<Todo[]>([
+  { id: 1, text: "Buy groceries", completed: false },
+  { id: 2, text: "Walk the dog", completed: true },
+  { id: 3, text: "Write docs", completed: false }
+]);
+
+const activeTodos = derive(
+  todos,
+  {
+    get: todos => todos.filter(t => !t.completed)
+  },
+  shallow
+);
+
+console.log(activeTodos.get().length);
+// @log: 2
+
+todos.set(state => [...state, { id: 4, text: "Review PR", completed: false }]);
+
+console.log(activeTodos.get().length);
+// @log: 3
+```
+
+### Computed properties
+
+Derive computed values from complex state:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/object.d.ts
+export { object } from "../../src/middleware/object";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { object } from "stav/object";
+import { derive } from "stav/sync";
+
+type CartItem = { id: number; name: string; price: number; quantity: number };
+
+const cart = object(
+  create({
+    items: [] as CartItem[],
+    taxRate: 0.08
+  })
+);
+
+const cartTotal = derive(cart, {
+  get: state => {
+    const subtotal = state.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const tax = subtotal * state.taxRate;
+    return {
+      subtotal: Number(subtotal.toFixed(2)),
+      tax: Number(tax.toFixed(2)),
+      total: Number((subtotal + tax).toFixed(2))
+    };
+  }
+});
+
+cart.assign({
+  items: [
+    { id: 1, name: "Book", price: 12.99, quantity: 2 },
+    { id: 2, name: "Pen", price: 1.5, quantity: 5 }
+  ]
+});
+
+console.log(cartTotal.get());
+// @log: { subtotal: 33.48, tax: 2.68, total: 36.16 }
+```
+
+## Entangling existing stores
+
+The `sync` middleware synchronizes two existing stores rather than creating a new one. This is useful for connecting different parts of your application or syncing a property with a standalone store:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/object.d.ts
+export { object } from "../../src/middleware/object";
+
+// @filename: node_modules/stav/sync.d.ts
+export { sync } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { object } from "stav/object";
+import { sync } from "stav/sync";
+
+const appState = object(
+  create({
+    user: { name: "Alice", theme: "dark" },
+    settings: { notifications: true }
+  })
+);
+
+const theme = sync(create("dark"), {
+  // [!code hl]
+  source: appState, // [!code hl]
+  get: state => state.user.theme, // [!code hl]
+  set: (theme, state) => ({
+    // [!code hl]
+    ...state, // [!code hl]
+    user: { ...state.user, theme } // [!code hl]
+  }) // [!code hl]
+}); // [!code hl]
+
+console.log(theme.get());
+// @log: dark
+
+theme.set("light");
+console.log(appState.get().user.theme);
+// @log: light
+
+appState.assign({ user: { name: "Alice", theme: "auto" } });
+console.log(theme.get());
+// @log: auto
+```
+
+### Unidirectional sync
+
+Omit the `set` function to create a read-only derived store that only syncs from the source:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/sync.d.ts
+export { sync } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { sync } from "stav/sync";
+
+const source = create({ count: 0, multiplier: 2 });
+
+const computed = sync(create(0), {
+  source: source,
+  get: state => state.count * state.multiplier
+  // No set function - read-only
+});
+
+console.log(computed.get());
+// @log: 0
+
+source.set({ count: 5, multiplier: 2 });
+console.log(computed.get());
+// @log: 10
+
+computed.set(20); // [!code hl]
+console.log(source.get());
+// @log: { count: 5, multiplier: 2 }
+// Source unchanged - no bidirectional sync
+```
+
+## Multiple syncd stores
+
+You can sync multiple stores to the same source. This is useful for breaking down complex state into focused, specialized stores:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/object.d.ts
+export { object } from "../../src/middleware/object";
+
+// @filename: node_modules/stav/sync.d.ts
+export { sync } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { object } from "stav/object";
+import { sync } from "stav/sync";
+
+const appState = object(
+  create({
+    x: 0,
+    y: 0,
+    zoom: 1
+  })
+);
+
+const position = sync(object(create({ x: 0, y: 0 })), {
+  source: appState,
+  get: state => ({ x: state.x, y: state.y }),
+  set: (pos, state) => ({ ...state, ...pos })
+});
+
+const zoom = sync(create(1), {
+  source: appState,
+  get: state => state.zoom,
+  set: (zoom, state) => ({ ...state, zoom })
+});
+
+position.assign({ x: 100, y: 50 });
+console.log(appState.get());
+// @log: { x: 100, y: 50, zoom: 1 }
+
+zoom.set(2);
+console.log(appState.get());
+// @log: { x: 100, y: 50, zoom: 2 }
+
+appState.assign({ x: 200, y: 100, zoom: 3 });
+console.log(position.get());
+// @log: { x: 200, y: 100 }
+console.log(zoom.get());
+// @log: 3
+```
+
+## Breaking the sync
+
+Call `unsync()` to stop synchronization between stores. After unsyncing, the stores operate independently:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { derive } from "stav/sync";
+
+const source = create(10);
+const derived = derive(source, {
+  get: value => value * 2,
+  set: value => value / 2
+});
+
+console.log(derived.get());
+// @log: 20
+
+derived.unsync(); // [!code hl]
+
+source.set(20);
+console.log(derived.get());
+// @log: 20
+// Derived store no longer syncs
+
+derived.set(100);
+console.log(source.get());
+// @log: 20
+// Source no longer syncs
+```
+
+import { Callout } from "vocs/components";
+
+<Callout type="info">
+  `unsync()` is safe to call multiple times. It's useful for cleanup when
+  derived stores are no longer needed, such as when unmounting components or
+  tearing down features.
+</Callout>
+
+## Working with middleware
+
+Derived stores work seamlessly with other Stav middleware. You can apply middleware to either the source store, the derived store, or both:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: node_modules/stav/object.d.ts
+export { object } from "../../src/middleware/object";
+
+// @filename: node_modules/stav/array.d.ts
+export { array } from "../../src/middleware/array";
+
+// @filename: node_modules/stav/sync.d.ts
+export { sync } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create } from "stav";
+import { object } from "stav/object";
+import { array } from "stav/array";
+import { sync } from "stav/sync";
+
+type Todo = { id: number; text: string; completed: boolean };
+
+const todos = array(
+  create<Todo[]>([
+    { id: 1, text: "Buy groceries", completed: false },
+    { id: 2, text: "Walk the dog", completed: true }
+  ])
+);
+
+const stats = sync(object(create({ total: 0, completed: 0, active: 0 })), {
+  source: todos,
+  get: todos => ({
+    total: todos.length,
+    completed: todos.filter(t => t.completed).length,
+    active: todos.filter(t => !t.completed).length
+  })
+});
+
+todos.push({ id: 3, text: "Write docs", completed: false });
+
+console.log(stats.get());
+// @log: { total: 3, completed: 1, active: 2 }
+```
+
+## Equality functions
+
+Pass an equality function as the third argument to `derive` to control when the derived store should update. This is especially useful when your `get` function returns objects or arrays:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+export { shallow } from "../../src/utils";
+
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
+
+// @filename: index.ts
+// ---cut---
+import { create, shallow } from "stav";
+import { derive } from "stav/sync";
+
+type User = { id: number; name: string; email: string };
+
+const users = create<User[]>([
+  { id: 1, name: "Alice", email: "alice@example.com" },
+  { id: 2, name: "Bob", email: "bob@example.com" }
+]);
+
+const userNames = derive(
+  users,
+  {
+    get: users => users.map(u => u.name)
+  },
+  shallow // [!code ++]
+);
+
+const listener = () => console.log("Names changed");
+userNames.subscribe(listener);
+
+users.set([
+  { id: 1, name: "Alice", email: "alice@newdomain.com" },
+  { id: 2, name: "Bob", email: "bob@newdomain.com" }
+]);
+// Doesn't log - names array is shallowly equal
+```
+
+<Callout type="warning">
+  Without an equality function, derived stores that return objects or arrays
+  will trigger updates on every source change, even if the derived value is
+  logically the same. Use `shallow` or `deep` equality functions when
+  appropriate.
+</Callout>
+
+import EntangleApi from "../../snippets/api/sync.mdx";
+
+<EntangleApi />

@@ -208,6 +208,86 @@ console.log(store.get());
 // @log: { count: 3 }
 ```
 
+### Computed properties with getters
+
+You can use JavaScript getters to create computed properties that feel like native properties on your store. This provides a more ergonomic API compared to calling methods:
+
+```ts twoslash
+// @noErrors
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+import { create } from "stav";
+// ---cut---
+const store = create(
+  { count: 0 },
+  {
+    get double() { // [!code hl]
+      return store.get().count * 2; // [!code hl]
+    }, // [!code hl]
+    increment: () => store.set(state => ({ count: state.count + 1 }))
+  }
+);
+
+store.
+//    ^|
+‎
+‎
+‎
+‎
+
+console.log(store.double); // [!code hl]
+//                ^^^^^^
+// @log: 0
+
+store.increment();
+console.log(store.double); // [!code hl]
+// @log: 2
+```
+
+Getters are particularly useful for computed values that should always reflect the current state:
+
+```ts twoslash
+// @filename: node_modules/stav/index.d.ts
+export { create } from "../../src/create";
+
+// @filename: index.ts
+import { create } from "stav";
+// ---cut---
+type Todo = { id: string; text: string; completed: boolean };
+
+const store = create([] as Todo[], {
+  addTodo: (text: string) =>
+    store.set(state => [
+      ...state,
+      { id: crypto.randomUUID(), text, completed: false }
+    ]),
+  get total() { // [!code hl]
+    return store.get().length; // [!code hl]
+  }, // [!code hl]
+  get completed() { // [!code hl]
+    return store.get().filter(t => t.completed).length; // [!code hl]
+  }, // [!code hl]
+  get active() { // [!code hl]
+    return store.get().filter(t => !t.completed).length; // [!code hl]
+  } // [!code hl]
+});
+
+console.log(store.total); // [!code hl]
+// @log: 0
+
+store.addTodo("Buy groceries");
+console.log(store.active); // [!code hl]
+// @log: 1
+```
+
+<Callout type="tip">
+  Use getters for computed values that are derived from state, and regular
+  methods for actions that perform side effects or state updates. This creates
+  a clear distinction in your API.
+</Callout>
+
 ### Real-world example
 
 Here's a more practical example showing how handlers can create a clean API for a todo store:

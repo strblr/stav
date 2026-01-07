@@ -70,7 +70,8 @@ export default defineConfig({
         link: "/docs/transactions"
       },
       {
-        text: "Derived stores"
+        text: "Derived stores",
+        link: "/docs/derived-stores"
       },
       {
         text: "Utilities",
@@ -117,8 +118,12 @@ export default defineConfig({
             link: "/docs/middlewares/devtools"
           },
           {
-            text: "Entangle",
-            link: "/docs/middlewares/entangle"
+            text: "Sync",
+            link: "/docs/middlewares/sync"
+          },
+          {
+            text: "Lock",
+            link: "/docs/middlewares/lock"
           },
           {
             text: "SSR Safe",

@@ -105,13 +105,13 @@ console.log(store.get());
 // @filename: node_modules/stav/index.d.ts
 export { create } from "../../src/create";
 
-// @filename: node_modules/stav/entangle.d.ts
-export { derive } from "../../src/middleware/entangle";
+// @filename: node_modules/stav/sync.d.ts
+export { derive } from "../../src/middleware/sync";
 
 // @filename: index.ts
 // ---cut---
 import { create } from "stav";
-import { derive } from "stav/entangle"; // [!code ++]
+import { derive } from "stav/sync"; // [!code ++]
 
 const celsius = create(0);
 
